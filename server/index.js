@@ -12,10 +12,27 @@ const MIME = {
   '.css': 'text/css',
 };
 
+function turnIceServers() {
+  const { TURN_URL, TURN_USERNAME, TURN_PASSWORD } = process.env;
+  if (!TURN_URL || !TURN_USERNAME || !TURN_PASSWORD) return [];
+
+  return [TURN_URL, `${TURN_URL}?transport=tcp`].map((urls) => ({
+    urls,
+    username: TURN_USERNAME,
+    credential: TURN_PASSWORD,
+  }));
+}
+
 const server = http.createServer((req, res) => {
   if (req.url === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     return res.end('ok');
+  }
+
+  if (req.url === '/turn-config.json') {
+    const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }, ...turnIceServers()];
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ iceServers }));
   }
 
   let reqPath = req.url === '/' ? '/index.html' : req.url;

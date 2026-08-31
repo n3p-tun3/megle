@@ -1,20 +1,27 @@
-const ICE_SERVERS = [
+const FALLBACK_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
-  // Open Relay Project: free, public, shared TURN server — fine for
-  // prototyping, but rate-limited/shared with everyone else using it.
-  // Swap in your own free-tier TURN (e.g. Metered.ca) before sharing
-  // this with more than a couple of friends. See README.
-  {
-    urls: 'turn:openrelay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
+  // Public shared TURN, used only if the server has no dedicated TURN
+  // credentials configured (e.g. running locally without a .env).
   {
     urls: 'turn:openrelay.metered.ca:443?transport=tcp',
     username: 'openrelayproject',
     credential: 'openrelayproject',
   },
 ];
+
+async function getIceServers() {
+  try {
+    const res = await fetch('/turn-config.json');
+    if (res.ok) {
+      const { iceServers } = await res.json();
+      const hasTurn = (iceServers || []).some((s) => JSON.stringify(s.urls).includes('turn:'));
+      if (hasTurn) return iceServers;
+    }
+  } catch {
+    // fall through to the hardcoded fallback below
+  }
+  return FALLBACK_ICE_SERVERS;
+}
 
 const statusEl = document.getElementById('status');
 const localVideo = document.getElementById('local-video');
@@ -26,6 +33,7 @@ const stopBtn = document.getElementById('stop-btn');
 let ws = null;
 let pc = null;
 let localStream = null;
+let iceServers = FALLBACK_ICE_SERVERS;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -38,6 +46,8 @@ function wsUrl() {
 
 async function start() {
   startBtn.disabled = true;
+
+  iceServers = await getIceServers();
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -91,7 +101,7 @@ function handleMessage(msg) {
 }
 
 function setupPeer(initiator) {
-  pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  pc = new RTCPeerConnection({ iceServers });
 
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
