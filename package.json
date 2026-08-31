@@ -1,0 +1,17 @@
+{
+  "name": "megle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Omegle-style random video chat core (matchmaking + WebRTC signaling)",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>megle</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>megle</h1>
+    <span id="status">idle</span>
+  </header>
+
+  <main>
+    <div class="video-grid">
+      <video id="local-video" autoplay playsinline muted></video>
+      <video id="remote-video" autoplay playsinline></video>
+    </div>
+
+    <div class="controls">
+      <button id="start-btn">Start</button>
+      <button id="next-btn" disabled>Next</button>
+      <button id="stop-btn" disabled>Stop</button>
+    </div>
+  </main>
+
+  <script src="client.js"></script>
+</body>
+</html>
