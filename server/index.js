@@ -13,6 +13,11 @@ const MIME = {
 };
 
 const server = http.createServer((req, res) => {
+  if (req.url === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    return res.end('ok');
+  }
+
   let reqPath = req.url === '/' ? '/index.html' : req.url;
   const filePath = path.join(PUBLIC_DIR, reqPath);
 
