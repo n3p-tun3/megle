@@ -9,19 +9,28 @@
 <body>
   <header>
     <h1>megle</h1>
-    <span id="status">idle</span>
+    <div id="status" class="status" data-state="idle">
+      <span class="status-dot"></span>
+      <span id="status-text">Idle</span>
+    </div>
   </header>
 
   <main>
     <div class="video-grid">
-      <video id="local-video" autoplay playsinline muted></video>
-      <video id="remote-video" autoplay playsinline></video>
+      <div class="video-tile">
+        <video id="local-video" autoplay playsinline muted></video>
+        <span class="video-label">You</span>
+      </div>
+      <div class="video-tile">
+        <video id="remote-video" autoplay playsinline></video>
+        <span class="video-label">Stranger</span>
+      </div>
     </div>
 
     <div class="controls">
-      <button id="start-btn">Start</button>
-      <button id="next-btn" disabled>Next</button>
-      <button id="stop-btn" disabled>Stop</button>
+      <button id="start-btn" class="btn btn-primary">Start</button>
+      <button id="next-btn" class="btn btn-secondary" disabled>Next</button>
+      <button id="stop-btn" class="btn btn-ghost" disabled>Stop</button>
     </div>
   </main>
 

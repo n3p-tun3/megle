@@ -24,6 +24,7 @@ async function getIceServers() {
 }
 
 const statusEl = document.getElementById('status');
+const statusTextEl = document.getElementById('status-text');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 const startBtn = document.getElementById('start-btn');
@@ -34,9 +35,11 @@ let ws = null;
 let pc = null;
 let localStream = null;
 let iceServers = FALLBACK_ICE_SERVERS;
+let manualStop = false;
 
-function setStatus(text) {
-  statusEl.textContent = text;
+function setStatus(text, state = 'idle') {
+  statusTextEl.textContent = text;
+  statusEl.dataset.state = state;
 }
 
 function wsUrl() {
@@ -46,17 +49,19 @@ function wsUrl() {
 
 async function start() {
   startBtn.disabled = true;
+  manualStop = false;
 
   iceServers = await getIceServers();
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
   } catch (err) {
-    setStatus(`camera/mic access failed: ${err.message}`);
+    setStatus(`Camera or microphone access failed: ${err.message}`, 'error');
     startBtn.disabled = false;
     return;
   }
   localVideo.srcObject = localStream;
+  localVideo.classList.add('active');
 
   ws = new WebSocket(wsUrl());
 
@@ -67,7 +72,8 @@ async function start() {
   ws.addEventListener('message', (event) => handleMessage(JSON.parse(event.data)));
 
   ws.addEventListener('close', () => {
-    setStatus('disconnected');
+    if (manualStop) return;
+    setStatus('Disconnected', 'error');
     teardownPeer();
   });
 
@@ -78,11 +84,11 @@ async function start() {
 function handleMessage(msg) {
   switch (msg.type) {
     case 'status':
-      setStatus(msg.status);
+      setStatus('Searching for a stranger...', 'searching');
       break;
 
     case 'matched':
-      setStatus('connected — say hi');
+      setStatus('Connected. Say hi.', 'connected');
       setupPeer(msg.initiator);
       break;
 
@@ -91,7 +97,7 @@ function handleMessage(msg) {
       break;
 
     case 'partner-left':
-      setStatus('stranger disconnected — searching for a new one');
+      setStatus('Stranger left. Searching for someone new...', 'searching');
       teardownPeer();
       break;
 
@@ -107,6 +113,7 @@ function setupPeer(initiator) {
 
   pc.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
+    remoteVideo.classList.add('active');
   };
 
   pc.onicecandidate = (event) => {
@@ -154,18 +161,20 @@ function teardownPeer() {
     pc.close();
     pc = null;
   }
+  remoteVideo.classList.remove('active');
   remoteVideo.srcObject = null;
 }
 
 function next() {
   teardownPeer();
-  setStatus('searching');
+  setStatus('Searching for a stranger...', 'searching');
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'next' }));
   }
 }
 
 function stop() {
+  manualStop = true;
   teardownPeer();
   if (ws) {
     ws.close();
@@ -175,8 +184,9 @@ function stop() {
     localStream.getTracks().forEach((track) => track.stop());
     localStream = null;
   }
+  localVideo.classList.remove('active');
   localVideo.srcObject = null;
-  setStatus('idle');
+  setStatus('Idle', 'idle');
   startBtn.disabled = false;
   nextBtn.disabled = true;
   stopBtn.disabled = true;
