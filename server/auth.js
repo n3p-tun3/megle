@@ -99,9 +99,19 @@ function consumeLoginToken(token) {
   return entry.email;
 }
 
+// Dashboards that expect a raw value often get pasted with surrounding
+// quotes, which would make the From header invalid.
+function unquote(value) {
+  return String(value || '').trim().replace(/^["']|["']$/g, '').trim();
+}
+
+function mailFrom() {
+  return unquote(process.env.MAIL_FROM);
+}
+
 async function deliverLoginLink(email, link) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.MAIL_FROM;
+  const apiKey = unquote(process.env.RESEND_API_KEY);
+  const from = mailFrom();
 
   if (!apiKey || !from) {
     console.log(`\n[auth] No mail provider configured. Magic link for ${email}:\n${link}\n`);
@@ -143,6 +153,11 @@ async function deliverLoginLink(email, link) {
   if (!res.ok) {
     throw new Error(`Mail provider returned ${res.status}: ${await res.text()}`);
   }
+
+  // Log the provider's id so a "never arrived" report can be traced in the
+  // Resend dashboard, where bounces and spam rejections show up.
+  const body = await res.json().catch(() => ({}));
+  console.log(`[auth] Sent login link to ${email} from "${from}" (resend id: ${body.id || 'unknown'})`);
   return { delivered: 'email' };
 }
 
@@ -180,6 +195,17 @@ function warnOnInsecureConfig() {
   }
   if (testLoginEnabled()) {
     console.warn('[auth] TEST_LOGIN_CODE is set. /auth/test-login can mint sessions.');
+  }
+
+  const from = mailFrom();
+  if (process.env.RESEND_API_KEY && from) {
+    console.log(`[auth] Mail delivery enabled, sending as "${from}".`);
+  } else {
+    console.warn(
+      '[auth] Mail delivery disabled ' +
+        `(RESEND_API_KEY ${process.env.RESEND_API_KEY ? 'set' : 'missing'}, ` +
+        `MAIL_FROM ${from ? 'set' : 'missing'}). Links print to this log.`
+    );
   }
 }
 
