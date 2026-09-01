@@ -21,7 +21,7 @@
     </div>
   </header>
 
-  <main>
+  <main class="app">
     <div class="video-grid">
       <div class="video-tile">
         <video id="local-video" autoplay playsinline muted></video>
@@ -38,6 +38,23 @@
       <button id="next-btn" class="btn btn-secondary" disabled>Next</button>
       <button id="stop-btn" class="btn btn-ghost" disabled>Stop</button>
     </div>
+
+    <section class="chat">
+      <div id="chat-log" class="chat-log" role="log" aria-live="polite"></div>
+      <form id="chat-form" class="chat-form">
+        <input
+          id="chat-input"
+          class="chat-input"
+          type="text"
+          maxlength="500"
+          placeholder="Start a chat to send messages"
+          autocomplete="off"
+          aria-label="Message"
+          disabled
+        />
+        <button id="chat-send" class="btn btn-primary" type="submit" disabled>Send</button>
+      </form>
+    </section>
   </main>
 
   <script src="client.js"></script>

@@ -20,6 +20,10 @@ const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css'
 const lastLinkSentAt = new Map();
 const LINK_THROTTLE_MS = 1000 * 30;
 
+// Matches the maxlength on the chat input; enforced here too since a client
+// can send whatever it likes over the socket.
+const MAX_CHAT_LENGTH = 500;
+
 function turnIceServers() {
   const { TURN_URL, TURN_USERNAME, TURN_PASSWORD } = process.env;
   if (!TURN_URL || !TURN_USERNAME || !TURN_PASSWORD) return [];
@@ -263,6 +267,13 @@ wss.on('connection', (ws, req) => {
       case 'signal': {
         const partner = partners.get(ws);
         if (partner) send(partner, { type: 'signal', data: msg.data });
+        break;
+      }
+
+      case 'chat': {
+        const partner = partners.get(ws);
+        const text = String(msg.text ?? '').trim().slice(0, MAX_CHAT_LENGTH);
+        if (partner && text) send(partner, { type: 'chat', text });
         break;
       }
 

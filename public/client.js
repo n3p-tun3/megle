@@ -31,6 +31,10 @@ const remoteVideo = document.getElementById('remote-video');
 const startBtn = document.getElementById('start-btn');
 const nextBtn = document.getElementById('next-btn');
 const stopBtn = document.getElementById('stop-btn');
+const chatLog = document.getElementById('chat-log');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
 
 let ws = null;
 let pc = null;
@@ -41,6 +45,40 @@ let manualStop = false;
 function setStatus(text, state = 'idle') {
   statusTextEl.textContent = text;
   statusEl.dataset.state = state;
+}
+
+function addChatMessage(text, from) {
+  const wasAtBottom =
+    chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 40;
+
+  const line = document.createElement('p');
+  line.className = 'chat-msg';
+  line.dataset.from = from;
+
+  if (from !== 'system') {
+    const author = document.createElement('span');
+    author.className = 'chat-msg-author';
+    author.textContent = from === 'you' ? 'You' : 'Stranger';
+    line.append(author);
+  }
+
+  // textContent, never innerHTML: message bodies come from another user.
+  line.append(document.createTextNode(text));
+  chatLog.append(line);
+
+  if (wasAtBottom) chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function clearChat() {
+  chatLog.replaceChildren();
+}
+
+function setChatEnabled(enabled) {
+  chatInput.disabled = !enabled;
+  chatSend.disabled = !enabled;
+  chatInput.placeholder = enabled
+    ? 'Say something'
+    : 'Start a chat to send messages';
 }
 
 function wsUrl() {
@@ -75,6 +113,7 @@ async function start() {
   ws.addEventListener('close', () => {
     if (manualStop) return;
     setStatus('Disconnected', 'error');
+    setChatEnabled(false);
     teardownPeer();
   });
 
@@ -96,6 +135,9 @@ function handleMessage(msg) {
 
     case 'matched':
       setStatus('Connected. Say hi.', 'connected');
+      clearChat();
+      addChatMessage('You are now chatting with a stranger.', 'system');
+      setChatEnabled(true);
       setupPeer(msg.initiator);
       break;
 
@@ -103,8 +145,14 @@ function handleMessage(msg) {
       handleSignal(msg.data);
       break;
 
+    case 'chat':
+      addChatMessage(msg.text, 'stranger');
+      break;
+
     case 'partner-left':
       setStatus('Stranger left. Searching for someone new...', 'searching');
+      addChatMessage('Stranger has disconnected.', 'system');
+      setChatEnabled(false);
       teardownPeer();
       break;
 
@@ -174,6 +222,8 @@ function teardownPeer() {
 
 function next() {
   teardownPeer();
+  setChatEnabled(false);
+  clearChat();
   setStatus('Searching for a stranger...', 'searching');
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'next' }));
@@ -193,11 +243,24 @@ function stop() {
   }
   localVideo.classList.remove('active');
   localVideo.srcObject = null;
+  setChatEnabled(false);
+  clearChat();
   setStatus('Idle', 'idle');
   startBtn.disabled = false;
   nextBtn.disabled = true;
   stopBtn.disabled = true;
 }
+
+chatForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+
+  const text = chatInput.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  ws.send(JSON.stringify({ type: 'chat', text }));
+  addChatMessage(text, 'you');
+  chatInput.value = '';
+});
 
 startBtn.addEventListener('click', start);
 nextBtn.addEventListener('click', next);
