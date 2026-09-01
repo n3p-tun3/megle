@@ -13,8 +13,12 @@ function sessionSecret() {
   return process.env.SESSION_SECRET || 'dev-insecure-secret';
 }
 
+// Falling back to the campus domain rather than to "allow everything" means a
+// missing env var on a deploy fails closed instead of opening the app up.
+const DEFAULT_ALLOWED_DOMAINS = 'astust.edu.et';
+
 function allowedDomains() {
-  return (process.env.ALLOWED_EMAIL_DOMAINS || '')
+  return (process.env.ALLOWED_EMAIL_DOMAINS || DEFAULT_ALLOWED_DOMAINS)
     .split(',')
     .map((d) => d.trim().toLowerCase())
     .filter(Boolean);
@@ -24,11 +28,11 @@ function isAllowedEmail(email) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return false;
 
   const domains = allowedDomains();
-  if (domains.length === 0) return true; // unset means "any domain" (dev only)
+  if (domains.includes('*')) return true; // opt-in escape hatch for local dev
 
   const domain = email.split('@')[1].toLowerCase();
-  // Accept the domain itself plus its subdomains, so "edu.et" covers
-  // "student.edu.et" without needing every subdomain listed.
+  // Accept the domain itself plus its subdomains, so "astust.edu.et" covers
+  // "student.astust.edu.et" without listing every subdomain.
   return domains.some((d) => domain === d || domain.endsWith(`.${d}`));
 }
 
@@ -104,18 +108,36 @@ async function deliverLoginLink(email, link) {
     return { delivered: 'console' };
   }
 
+  const text = [
+    'Sign in to megle:',
+    '',
+    link,
+    '',
+    'This link expires in 15 minutes and can only be used once.',
+    'If you did not request it, you can ignore this email.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#18181b">
+      <p>Click below to sign in to megle.</p>
+      <p style="margin:24px 0">
+        <a href="${link}"
+           style="background:#2563eb;color:#fff;padding:11px 20px;border-radius:8px;
+                  text-decoration:none;display:inline-block">Sign in to megle</a>
+      </p>
+      <p style="color:#52525b;font-size:13px">
+        This link expires in 15 minutes and can only be used once.
+        If you did not request it, you can ignore this email.
+      </p>
+    </div>`;
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from,
-      to: email,
-      subject: 'Your megle sign-in link',
-      text: `Sign in to megle:\n\n${link}\n\nThis link expires in 15 minutes.`,
-    }),
+    body: JSON.stringify({ from, to: email, subject: 'Your megle sign-in link', text, html }),
   });
 
   if (!res.ok) {
@@ -124,12 +146,40 @@ async function deliverLoginLink(email, link) {
   return { delivered: 'email' };
 }
 
+// A shared code that mints a session without email, so the app can be tried
+// without a campus mailbox. Disabled unless TEST_LOGIN_CODE is set.
+function testLoginEnabled() {
+  return Boolean(process.env.TEST_LOGIN_CODE);
+}
+
+function checkTestLoginCode(code) {
+  const expected = process.env.TEST_LOGIN_CODE || '';
+  if (!expected || !code) return false;
+
+  const a = Buffer.from(String(code));
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Distinct seats let one person sign in as two identities in two browser
+// profiles and match against themselves.
+function testAccountEmail(seat) {
+  const clean = String(seat || 'a').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'a';
+  const domain = allowedDomains().find((d) => d !== '*') || DEFAULT_ALLOWED_DOMAINS;
+  return `test-${clean}@${domain}`;
+}
+
 function warnOnInsecureConfig() {
   if (!process.env.SESSION_SECRET) {
     console.warn('[auth] SESSION_SECRET is unset. Using an insecure default (dev only).');
   }
-  if (allowedDomains().length === 0) {
-    console.warn('[auth] ALLOWED_EMAIL_DOMAINS is unset. Any email domain can sign in.');
+  if (allowedDomains().includes('*')) {
+    console.warn('[auth] ALLOWED_EMAIL_DOMAINS contains "*". Any email domain can sign in.');
+  } else {
+    console.log(`[auth] Sign-in restricted to: ${allowedDomains().join(', ')}`);
+  }
+  if (testLoginEnabled()) {
+    console.warn('[auth] TEST_LOGIN_CODE is set. /auth/test-login can mint sessions.');
   }
 }
 
@@ -142,5 +192,8 @@ module.exports = {
   createLoginToken,
   consumeLoginToken,
   deliverLoginLink,
+  testLoginEnabled,
+  checkTestLoginCode,
+  testAccountEmail,
   warnOnInsecureConfig,
 };

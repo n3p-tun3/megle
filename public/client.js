@@ -25,6 +25,7 @@ async function getIceServers() {
 
 const statusEl = document.getElementById('status');
 const statusTextEl = document.getElementById('status-text');
+const onlineEl = document.getElementById('online-count');
 const sessionEmailEl = document.getElementById('session-email');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
@@ -40,11 +41,21 @@ let ws = null;
 let pc = null;
 let localStream = null;
 let iceServers = FALLBACK_ICE_SERVERS;
-let manualStop = false;
+
+// True once the user has pressed Start, so a reconnect knows to rejoin the
+// queue rather than sitting idle.
+let wantMatch = false;
+let leavingPage = false;
+let reconnectDelay = 1000;
+let reconnectTimer = null;
 
 function setStatus(text, state = 'idle') {
   statusTextEl.textContent = text;
   statusEl.dataset.state = state;
+}
+
+function setOnlineCount(count) {
+  onlineEl.textContent = count === 1 ? '1 online' : `${count} online`;
 }
 
 function addChatMessage(text, from) {
@@ -76,9 +87,7 @@ function clearChat() {
 function setChatEnabled(enabled) {
   chatInput.disabled = !enabled;
   chatSend.disabled = !enabled;
-  chatInput.placeholder = enabled
-    ? 'Say something'
-    : 'Start a chat to send messages';
+  chatInput.placeholder = enabled ? 'Say something' : 'Start a chat to send messages';
 }
 
 function wsUrl() {
@@ -86,47 +95,56 @@ function wsUrl() {
   return `${proto}//${location.host}`;
 }
 
-async function start() {
-  startBtn.disabled = true;
-  manualStop = false;
-
-  iceServers = await getIceServers();
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  } catch (err) {
-    setStatus(`Camera or microphone access failed: ${err.message}`, 'error');
-    startBtn.disabled = false;
-    return;
+function sendToServer(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+    return true;
   }
-  localVideo.srcObject = localStream;
-  localVideo.classList.add('active');
+  return false;
+}
 
+// The socket is opened on page load and held for the whole visit: it carries
+// the presence count, not just matchmaking.
+function connect() {
   ws = new WebSocket(wsUrl());
 
   ws.addEventListener('open', () => {
-    ws.send(JSON.stringify({ type: 'find' }));
+    reconnectDelay = 1000;
+    // Clear any "Reconnecting..." left over from the drop that got us here.
+    if (wantMatch) {
+      setStatus('Searching for a stranger...', 'searching');
+      sendToServer({ type: 'find' });
+    } else {
+      setStatus('Idle', 'idle');
+    }
   });
 
   ws.addEventListener('message', (event) => handleMessage(JSON.parse(event.data)));
 
   ws.addEventListener('close', () => {
-    if (manualStop) return;
-    setStatus('Disconnected', 'error');
-    setChatEnabled(false);
-    teardownPeer();
-  });
+    if (leavingPage) return;
 
-  nextBtn.disabled = false;
-  stopBtn.disabled = false;
+    teardownPeer();
+    setChatEnabled(false);
+    setOnlineCount(0);
+    setStatus('Reconnecting...', 'error');
+
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 10000);
+  });
 }
 
 function handleMessage(msg) {
   switch (msg.type) {
     case 'unauthorized':
-      manualStop = true;
+      leavingPage = true;
       setStatus('Session expired. Redirecting to sign in...', 'error');
       location.href = '/login';
+      break;
+
+    case 'online':
+      setOnlineCount(msg.count);
       break;
 
     case 'status':
@@ -158,6 +176,30 @@ function handleMessage(msg) {
 
     default:
       break;
+  }
+}
+
+async function start() {
+  startBtn.disabled = true;
+
+  iceServers = await getIceServers();
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch (err) {
+    setStatus(`Camera or microphone access failed: ${err.message}`, 'error');
+    startBtn.disabled = false;
+    return;
+  }
+  localVideo.srcObject = localStream;
+  localVideo.classList.add('active');
+
+  wantMatch = true;
+  nextBtn.disabled = false;
+  stopBtn.disabled = false;
+
+  if (!sendToServer({ type: 'find' })) {
+    setStatus('Reconnecting...', 'error');
   }
 }
 
@@ -206,9 +248,7 @@ async function handleSignal(data) {
 }
 
 function sendSignal(data) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'signal', data }));
-  }
+  sendToServer({ type: 'signal', data });
 }
 
 function teardownPeer() {
@@ -225,18 +265,17 @@ function next() {
   setChatEnabled(false);
   clearChat();
   setStatus('Searching for a stranger...', 'searching');
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'next' }));
-  }
+  sendToServer({ type: 'next' });
 }
 
 function stop() {
-  manualStop = true;
+  wantMatch = false;
   teardownPeer();
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
+
+  // Leave the queue but keep the socket open, so this tab still counts
+  // toward the presence total while idle.
+  sendToServer({ type: 'leave' });
+
   if (localStream) {
     localStream.getTracks().forEach((track) => track.stop());
     localStream = null;
@@ -255,9 +294,9 @@ chatForm.addEventListener('submit', (event) => {
   event.preventDefault();
 
   const text = chatInput.value.trim();
-  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!text) return;
+  if (!sendToServer({ type: 'chat', text })) return;
 
-  ws.send(JSON.stringify({ type: 'chat', text }));
   addChatMessage(text, 'you');
   chatInput.value = '';
 });
@@ -266,9 +305,15 @@ startBtn.addEventListener('click', start);
 nextBtn.addEventListener('click', next);
 stopBtn.addEventListener('click', stop);
 
+window.addEventListener('pagehide', () => {
+  leavingPage = true;
+});
+
 fetch('/api/me')
   .then((res) => (res.ok ? res.json() : null))
   .then((me) => {
     if (me) sessionEmailEl.textContent = me.email;
   })
   .catch(() => {});
+
+connect();

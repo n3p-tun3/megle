@@ -5,7 +5,11 @@
       "name": "megle-server",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start"],
-      "port": 3000
+      "port": 3000,
+      "env": {
+        "TEST_LOGIN_CODE": "localdev",
+        "SESSION_SECRET": "local-dev-secret"
+      }
     }
   ]
 }

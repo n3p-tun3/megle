@@ -100,13 +100,7 @@ async function handleAuthRequest(req, res) {
   }
 }
 
-function handleAuthVerify(req, res, url) {
-  const email = auth.consumeLoginToken(url.searchParams.get('token') || '');
-  if (!email) {
-    res.writeHead(302, { Location: '/login?error=expired' });
-    return res.end();
-  }
-
+function signInAndRedirect(req, res, email) {
   const secure = (req.headers['x-forwarded-proto'] || '') === 'https';
   const cookie = [
     `${auth.SESSION_COOKIE}=${auth.createSession(email)}`,
@@ -121,6 +115,27 @@ function handleAuthVerify(req, res, url) {
 
   res.writeHead(302, { 'Set-Cookie': cookie, Location: '/' });
   res.end();
+}
+
+function handleAuthVerify(req, res, url) {
+  const email = auth.consumeLoginToken(url.searchParams.get('token') || '');
+  if (!email) {
+    res.writeHead(302, { Location: '/login?error=expired' });
+    return res.end();
+  }
+  signInAndRedirect(req, res, email);
+}
+
+function handleTestLogin(req, res, url) {
+  if (!auth.testLoginEnabled()) {
+    res.writeHead(404);
+    return res.end('Not found');
+  }
+  if (!auth.checkTestLoginCode(url.searchParams.get('code'))) {
+    res.writeHead(403);
+    return res.end('Bad test login code');
+  }
+  signInAndRedirect(req, res, auth.testAccountEmail(url.searchParams.get('as')));
 }
 
 function serveStatic(res, reqPath) {
@@ -156,6 +171,10 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/auth/verify') {
     return handleAuthVerify(req, res, url);
+  }
+
+  if (pathname === '/auth/test-login') {
+    return handleTestLogin(req, res, url);
   }
 
   if (pathname === '/auth/logout') {
@@ -202,9 +221,17 @@ const wss = new WebSocketServer({ server });
 const waiting = [];
 // ws -> partner ws, for clients currently paired.
 const partners = new Map();
+// Every authenticated socket, whether or not it is looking for a match.
+// Clients hold this open from page load, so it doubles as the presence count.
+const online = new Set();
 
 function send(ws, msg) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+}
+
+function broadcastOnline() {
+  const msg = { type: 'online', count: online.size };
+  for (const client of online) send(client, msg);
 }
 
 function removeFromWaiting(ws) {
@@ -250,6 +277,8 @@ wss.on('connection', (ws, req) => {
     return ws.close(4001, 'Not signed in');
   }
   ws.email = session.email;
+  online.add(ws);
+  broadcastOnline();
 
   ws.on('message', (raw) => {
     let msg;
@@ -281,6 +310,12 @@ wss.on('connection', (ws, req) => {
         unpair(ws, { requeueSelf: true });
         break;
 
+      // Leave the queue or the current pair but stay connected, so the
+      // presence count still includes people idling on the page.
+      case 'leave':
+        unpair(ws, { requeueSelf: false });
+        break;
+
       default:
         break;
     }
@@ -288,6 +323,8 @@ wss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     unpair(ws, { requeueSelf: false });
+    online.delete(ws);
+    broadcastOnline();
   });
 });
 

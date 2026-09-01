@@ -60,6 +60,12 @@ header h1 {
   gap: 20px;
 }
 
+.online-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .status {
   display: flex;
   align-items: center;
