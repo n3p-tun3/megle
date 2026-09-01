@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>megle</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>megle</h1>
+  </header>
+
+  <main class="centered">
+    <div class="panel">
+      <h2 class="panel-title">Sign in with your school email</h2>
+      <p class="panel-body">
+        We will email you a link that signs you in. No password to remember.
+      </p>
+
+      <form id="login-form" class="form">
+        <label class="field-label" for="email">School email</label>
+        <input
+          id="email"
+          class="field-input"
+          type="email"
+          name="email"
+          autocomplete="email"
+          placeholder="you@school.edu"
+          required
+        />
+        <p id="form-message" class="field-message" role="status" aria-live="polite"></p>
+        <button id="submit-btn" class="btn btn-primary btn-block" type="submit">
+          Email me a link
+        </button>
+      </form>
+
+      <div id="sent-state" class="sent-state" hidden>
+        <p class="panel-body">
+          Check <strong id="sent-email"></strong> for your sign-in link. It expires in 15 minutes.
+        </p>
+        <button id="retry-btn" class="btn btn-secondary btn-block" type="button">
+          Use a different email
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="login.js"></script>
+</body>
+</html>

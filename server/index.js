@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
+const auth = require('./auth');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -11,6 +12,13 @@ const MIME = {
   '.js': 'text/javascript',
   '.css': 'text/css',
 };
+
+// Pages that never require a session. Everything else behind the auth gate.
+const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css']);
+
+// email -> timestamp of last magic link, to stop someone hammering the mail API.
+const lastLinkSentAt = new Map();
+const LINK_THROTTLE_MS = 1000 * 30;
 
 function turnIceServers() {
   const { TURN_URL, TURN_USERNAME, TURN_PASSWORD } = process.env;
@@ -23,21 +31,96 @@ function turnIceServers() {
   }));
 }
 
-const server = http.createServer((req, res) => {
-  if (req.url === '/healthz') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    return res.end('ok');
+function originFor(req) {
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  return `${proto}://${req.headers.host}`;
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 4096) reject(new Error('Body too large'));
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body || '{}'));
+      } catch {
+        reject(new Error('Invalid JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(payload));
+}
+
+async function handleAuthRequest(req, res) {
+  let email;
+  try {
+    ({ email } = await readJsonBody(req));
+  } catch (err) {
+    return sendJson(res, 400, { error: err.message });
   }
 
-  if (req.url === '/turn-config.json') {
-    const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }, ...turnIceServers()];
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ iceServers }));
+  email = String(email || '').trim().toLowerCase();
+
+  if (!auth.isAllowedEmail(email)) {
+    const domains = auth.allowedDomains();
+    return sendJson(res, 400, {
+      error: domains.length
+        ? `Use your school email address (${domains.join(' or ')}).`
+        : 'Enter a valid email address.',
+    });
   }
 
-  let reqPath = req.url === '/' ? '/index.html' : req.url;
+  const last = lastLinkSentAt.get(email) || 0;
+  if (Date.now() - last < LINK_THROTTLE_MS) {
+    return sendJson(res, 429, { error: 'A link was just sent. Check your inbox.' });
+  }
+  lastLinkSentAt.set(email, Date.now());
+
+  const token = auth.createLoginToken(email);
+  const link = `${originFor(req)}/auth/verify?token=${encodeURIComponent(token)}`;
+
+  try {
+    const { delivered } = await auth.deliverLoginLink(email, link);
+    return sendJson(res, 200, { ok: true, delivered });
+  } catch (err) {
+    console.error('[auth] Failed to deliver login link:', err.message);
+    return sendJson(res, 502, { error: 'Could not send the email. Try again shortly.' });
+  }
+}
+
+function handleAuthVerify(req, res, url) {
+  const email = auth.consumeLoginToken(url.searchParams.get('token') || '');
+  if (!email) {
+    res.writeHead(302, { Location: '/login?error=expired' });
+    return res.end();
+  }
+
+  const secure = (req.headers['x-forwarded-proto'] || '') === 'https';
+  const cookie = [
+    `${auth.SESSION_COOKIE}=${auth.createSession(email)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${60 * 60 * 24 * 30}`,
+    secure ? 'Secure' : '',
+  ]
+    .filter(Boolean)
+    .join('; ');
+
+  res.writeHead(302, { 'Set-Cookie': cookie, Location: '/' });
+  res.end();
+}
+
+function serveStatic(res, reqPath) {
   const filePath = path.join(PUBLIC_DIR, reqPath);
-
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
     return res.end('Forbidden');
@@ -52,6 +135,61 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
     res.end(data);
   });
+}
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, originFor(req));
+  const pathname = url.pathname;
+
+  if (pathname === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    return res.end('ok');
+  }
+
+  if (pathname === '/auth/request' && req.method === 'POST') {
+    return handleAuthRequest(req, res);
+  }
+
+  if (pathname === '/auth/verify') {
+    return handleAuthVerify(req, res, url);
+  }
+
+  if (pathname === '/auth/logout') {
+    const cookie = `${auth.SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+    res.writeHead(302, { 'Set-Cookie': cookie, Location: '/login' });
+    return res.end();
+  }
+
+  if (pathname === '/login') {
+    return serveStatic(res, '/login.html');
+  }
+
+  if (PUBLIC_PATHS.has(pathname)) {
+    return serveStatic(res, pathname);
+  }
+
+  // Everything below requires a valid session.
+  const session = auth.sessionFromRequest(req);
+  if (!session) {
+    if (pathname === '/' || pathname.endsWith('.html')) {
+      res.writeHead(302, { Location: '/login' });
+      return res.end();
+    }
+    return sendJson(res, 401, { error: 'Not signed in' });
+  }
+
+  if (pathname === '/api/me') {
+    return sendJson(res, 200, { email: session.email });
+  }
+
+  // Gated so the TURN credentials are only reachable by signed-in students,
+  // rather than by anyone who loads the page.
+  if (pathname === '/turn-config.json') {
+    const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }, ...turnIceServers()];
+    return sendJson(res, 200, { iceServers });
+  }
+
+  serveStatic(res, pathname === '/' ? '/index.html' : pathname);
 });
 
 const wss = new WebSocketServer({ server });
@@ -101,7 +239,14 @@ function unpair(ws, { requeueSelf }) {
   if (requeueSelf) tryMatch(ws);
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  const session = auth.sessionFromRequest(req);
+  if (!session) {
+    send(ws, { type: 'unauthorized' });
+    return ws.close(4001, 'Not signed in');
+  }
+  ws.email = session.email;
+
   ws.on('message', (raw) => {
     let msg;
     try {
@@ -136,5 +281,6 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, () => {
+  auth.warnOnInsecureConfig();
   console.log(`Signaling server listening on :${PORT}`);
 });

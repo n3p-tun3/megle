@@ -25,6 +25,7 @@ async function getIceServers() {
 
 const statusEl = document.getElementById('status');
 const statusTextEl = document.getElementById('status-text');
+const sessionEmailEl = document.getElementById('session-email');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 const startBtn = document.getElementById('start-btn');
@@ -83,6 +84,12 @@ async function start() {
 
 function handleMessage(msg) {
   switch (msg.type) {
+    case 'unauthorized':
+      manualStop = true;
+      setStatus('Session expired. Redirecting to sign in...', 'error');
+      location.href = '/login';
+      break;
+
     case 'status':
       setStatus('Searching for a stranger...', 'searching');
       break;
@@ -195,3 +202,10 @@ function stop() {
 startBtn.addEventListener('click', start);
 nextBtn.addEventListener('click', next);
 stopBtn.addEventListener('click', stop);
+
+fetch('/api/me')
+  .then((res) => (res.ok ? res.json() : null))
+  .then((me) => {
+    if (me) sessionEmailEl.textContent = me.email;
+  })
+  .catch(() => {});
