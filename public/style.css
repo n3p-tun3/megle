@@ -139,6 +139,17 @@ main {
 /* Mobile first: stage on top, controls in the middle, chat filling the rest.
    Only the chat log scrolls; the page itself never does. */
 main.app {
+  /* Floor for the chat so a tall stage cannot squeeze it to nothing. */
+  --chat-min-h: 180px;
+  /* header + vertical padding + controls row + both row gaps */
+  --chrome-v: 136px;
+  /* Two stacked 16:9 tiles make the stage 8/9. Take whichever bound is
+     tighter so the feeds are pixel-exact 16:9 with no bars inside them. */
+  --stage-w: min(
+    calc(100vw - 24px),
+    calc((100dvh - var(--chrome-v) - var(--chat-min-h)) * 8 / 9)
+  );
+
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -151,11 +162,17 @@ main.app {
 
 /* ---------- video stage ---------- */
 
+/* Always two stacked rows. Only the width calculation differs by breakpoint.
+   align-self centres it horizontally in the mobile flex column, and
+   vertically in the desktop grid area. */
 .stage {
   flex: none;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  height: clamp(150px, 32dvh, 300px);
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+  width: var(--stage-w);
+  height: calc(var(--stage-w) * 9 / 8);
+  align-self: center;
   border: 1px solid var(--border);
   background: #000;
   overflow: hidden;
@@ -170,7 +187,7 @@ main.app {
 
 /* Hairline between the two feeds instead of a gap, so they read as one stage. */
 .video-tile + .video-tile {
-  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
 }
 
 video {
@@ -380,7 +397,10 @@ video.active {
 
 /* ---------- desktop ---------- */
 
-@media (min-width: 900px) {
+/* Two columns on wide screens, and also on short landscape ones: a landscape
+   phone has no vertical room for a stacked stage plus chat, but plenty of
+   width to put them side by side. */
+@media (min-width: 900px), (orientation: landscape) and (max-height: 560px) {
   header {
     height: 48px;
     padding: 0 16px;
@@ -393,7 +413,9 @@ video.active {
      box with dead black either side. Everything left over goes to chat, and
      the pair is centred rather than stretched. */
   main.app {
-    --chat-w: 420px;
+    /* Capped in px on desktop, but proportional so a landscape phone does
+       not hand almost half its width to the chat. */
+    --chat-w: min(420px, 38vw);
     /* header + vertical padding + controls row + row gap */
     --chrome-v: 116px;
     /* horizontal padding + column gap + chat column */
@@ -420,18 +442,8 @@ video.active {
 
   .stage {
     grid-area: stage;
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
-    width: 100%;
-    height: calc(var(--stage-w) * 9 / 8);
     max-height: 100%;
     min-height: 0;
-    align-self: center;
-  }
-
-  .video-tile + .video-tile {
-    border-left: none;
-    border-top: 1px solid var(--border);
   }
 
   .controls {
