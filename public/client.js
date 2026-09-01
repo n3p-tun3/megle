@@ -9,6 +9,23 @@ const FALLBACK_ICE_SERVERS = [
   },
 ];
 
+// Unconstrained `video: true` often yields 640x480 (4:3), which pillarboxes
+// badly in the wide stage tiles. These are "ideal", not "exact", so a camera
+// that cannot do 720p still works and just returns its closest match.
+const MEDIA_CONSTRAINTS = {
+  video: {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    aspectRatio: { ideal: 16 / 9 },
+    facingMode: 'user',
+  },
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  },
+};
+
 async function getIceServers() {
   try {
     const res = await fetch('/turn-config.json');
@@ -185,7 +202,7 @@ async function start() {
   iceServers = await getIceServers();
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localStream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
   } catch (err) {
     setStatus(`Camera or microphone access failed: ${err.message}`, 'error');
     startBtn.disabled = false;
@@ -193,6 +210,11 @@ async function start() {
   }
   localVideo.srcObject = localStream;
   localVideo.classList.add('active');
+
+  const settings = localStream.getVideoTracks()[0]?.getSettings();
+  if (settings) {
+    console.log(`Camera: ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
+  }
 
   wantMatch = true;
   nextBtn.disabled = false;
