@@ -1,20 +1,23 @@
 :root {
-  --bg: #0b0b0d;
-  --border: rgb(255 255 255 / 0.08);
-  --text: #e4e4e7;
-  --text-muted: #8b8b93;
-  /* Lightened from #6b6b73 so placeholders clear WCAG AA (4.5:1) on the
-     input background rather than sitting at ~3.5:1. */
+  --bg: #0a0a0b;
+  --surface: #101013;
+  --border: rgb(255 255 255 / 0.09);
+  --border-strong: rgb(255 255 255 / 0.17);
+  --text: #ededf0;
+  --text-muted: #9a9aa2;
   --text-placeholder: #85858d;
-  --accent: #2563eb;
-  --accent-hover: #3b82f6;
-  --accent-active: #1d4ed8;
+  --accent: #2f6bff;
+  --accent-hover: #4a7dff;
+  --accent-active: #2257d8;
   --dot-idle: #52525b;
   --dot-searching: #eab308;
   --dot-connected: #22c55e;
   --dot-error: #ef4444;
-  --radius-lg: 12px;
-  --radius-md: 8px;
+
+  /* One radius scale: 6px on every panel and control. The video stage is the
+     single exception at 0, since it reads as a screen rather than a card. */
+  --radius: 6px;
+  --control-h: 36px;
 }
 
 * {
@@ -35,7 +38,10 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* ---------- header ---------- */
 
 header {
   flex: none;
@@ -43,40 +49,39 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 24px;
+  height: 52px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--border);
 }
 
 header h1 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .online-count {
-  color: var(--text-muted);
-  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
 
 .status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: 0.85rem;
+  gap: 7px;
 }
 
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--dot-idle);
   transition: background-color 0.2s ease;
@@ -101,9 +106,27 @@ header h1 {
     opacity: 1;
   }
   50% {
-    opacity: 0.35;
+    opacity: 0.3;
   }
 }
+
+.session {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.session a:hover {
+  color: var(--text);
+}
+
+/* ---------- app shell ---------- */
 
 main {
   display: flex;
@@ -113,35 +136,41 @@ main {
   gap: 24px;
 }
 
-/* The signed-in app is a fixed-height column: only the chat log scrolls. */
+/* Mobile first: stage on top, controls in the middle, chat filling the rest.
+   Only the chat log scrolls; the page itself never does. */
 main.app {
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 16px;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12px;
+  gap: 12px;
 }
 
-/* An explicit height (rather than one implied by aspect-ratio) keeps the
-   video row from crowding out the chat on short or narrow viewports. */
-.video-grid {
+/* ---------- video stage ---------- */
+
+.stage {
   flex: none;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  width: 100%;
-  height: clamp(150px, 34dvh, 330px);
+  height: clamp(150px, 32dvh, 300px);
+  border: 1px solid var(--border);
+  background: #000;
+  overflow: hidden;
 }
 
 .video-tile {
   position: relative;
-  height: 100%;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--border);
+  min-width: 0;
+  min-height: 0;
   background: #000;
+}
+
+/* Hairline between the two feeds instead of a gap, so they read as one stage. */
+.video-tile + .video-tile {
+  border-left: 1px solid var(--border);
 }
 
 video {
@@ -152,7 +181,7 @@ video {
      cropping the edges off someone's face. */
   object-fit: contain;
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.35s ease;
 }
 
 video.active {
@@ -161,29 +190,99 @@ video.active {
 
 .video-label {
   position: absolute;
-  left: 10px;
-  bottom: 10px;
-  padding: 3px 8px;
-  border-radius: var(--radius-md);
-  background: rgb(0 0 0 / 0.5);
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 0.55);
   color: var(--text);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
 }
+
+/* ---------- controls ---------- */
 
 .controls {
   flex: none;
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
+
+.btn {
+  height: var(--control-h);
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-active);
+}
+
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 0.3);
+  background: rgb(255 255 255 / 0.05);
+}
+
+/* Least prominent of the three: no fill, no border, muted until hovered. */
+.btn-ghost {
+  padding: 0 12px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--text);
+  background: rgb(255 255 255 / 0.05);
+}
+
+/* ---------- chat ---------- */
 
 .chat {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
   overflow: hidden;
 }
 
@@ -191,12 +290,12 @@ video.active {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  font-size: 0.88rem;
-  line-height: 1.45;
+  gap: 8px;
+  font-size: 0.875rem;
+  line-height: 1.5;
   scrollbar-width: thin;
   scrollbar-color: rgb(255 255 255 / 0.16) transparent;
 }
@@ -255,13 +354,14 @@ video.active {
 .chat-input {
   flex: 1;
   min-width: 0;
-  padding: 9px 12px;
+  height: var(--control-h);
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.03);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 0.04);
   color: var(--text);
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .chat-input::placeholder {
@@ -274,62 +374,55 @@ video.active {
 }
 
 .chat-input:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.btn {
-  padding: 10px 22px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+/* ---------- desktop ---------- */
+
+@media (min-width: 900px) {
+  header {
+    height: 56px;
+    padding: 0 20px;
+  }
+
+  /* Stage and controls stack in the left column; chat sits beside them and
+     runs the full height. The stage row takes all the leftover space. */
+  main.app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 26vw, 360px);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'stage chat'
+      'controls chat';
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .stage {
+    grid-area: stage;
+    /* Stacked, not side by side, and sized by the row rather than a clamp. */
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .video-tile + .video-tile {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .controls {
+    grid-area: controls;
+  }
+
+  .chat {
+    grid-area: chat;
+  }
 }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-primary:active:not(:disabled) {
-  background: var(--accent-active);
-}
-
-.btn-secondary {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--text);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  border-color: rgb(255 255 255 / 0.2);
-  background: rgb(255 255 255 / 0.04);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  color: var(--text);
-  background: rgb(255 255 255 / 0.04);
-}
+/* ---------- login ---------- */
 
 main.centered {
   flex: 1;
@@ -339,23 +432,23 @@ main.centered {
 
 .panel {
   width: 100%;
-  max-width: 380px;
-  padding: 28px;
+  max-width: 360px;
+  padding: 24px;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
 }
 
 .panel-title {
-  margin: 0 0 8px;
-  font-size: 1.05rem;
+  margin: 0 0 6px;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .panel-body {
-  margin: 0 0 20px;
+  margin: 0 0 18px;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.875rem;
   line-height: 1.5;
 }
 
@@ -366,18 +459,19 @@ main.centered {
 }
 
 .field-label {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
 }
 
 .field-input {
-  padding: 10px 12px;
+  height: 38px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.03);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 0.04);
   color: var(--text);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .field-input::placeholder {
@@ -391,7 +485,7 @@ main.centered {
 
 .field-message {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   line-height: 1.4;
   color: var(--dot-error);
 }
@@ -415,25 +509,35 @@ main.centered {
   gap: 8px;
 }
 
-.session {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
+/* ---------- small screens ---------- */
 
-.session a {
-  color: var(--text-muted);
-  text-decoration: none;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
+@media (max-width: 640px) {
+  header {
+    padding: 0 12px;
+  }
 
-.session a:hover {
-  color: var(--text);
-  border-color: rgb(255 255 255 / 0.24);
+  .header-right {
+    gap: 12px;
+  }
+
+  /* The address is recoverable from the sign-out flow; the status and the
+     online count matter more once the viewport is this tight. */
+  #session-email {
+    display: none;
+  }
+
+  .controls {
+    gap: 6px;
+  }
+
+  .btn {
+    padding: 0 14px;
+  }
+
+  .controls .btn-primary,
+  .controls .btn-secondary {
+    flex: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -442,42 +546,5 @@ main.centered {
   .btn {
     animation: none !important;
     transition: none !important;
-  }
-}
-
-@media (max-width: 640px) {
-  header {
-    padding: 12px 16px;
-  }
-
-  .header-right {
-    gap: 12px;
-  }
-
-  /* The email is recoverable from the sign-out flow; the status matters more
-     than the address once the viewport is this tight. */
-  #session-email {
-    display: none;
-  }
-
-  main.app {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  .controls {
-    justify-content: center;
-  }
-
-  .btn {
-    padding: 9px 16px;
-    font-size: 0.9rem;
-  }
-}
-
-/* Landscape phones are short: shrink the video row so chat stays usable. */
-@media (max-height: 520px) and (orientation: landscape) {
-  .video-grid {
-    height: clamp(110px, 30dvh, 200px);
   }
 }
