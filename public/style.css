@@ -382,30 +382,51 @@ video.active {
 
 @media (min-width: 900px) {
   header {
-    height: 56px;
-    padding: 0 20px;
+    height: 48px;
+    padding: 0 16px;
   }
 
   /* Stage and controls stack in the left column; chat sits beside them and
-     runs the full height. The stage row takes all the leftover space. */
+     runs the full height. The stage row takes all the leftover space.
+     The video column is sized to the height the stage will actually get, so
+     two stacked 16:9 feeds fill it edge to edge instead of sitting in a wide
+     box with dead black either side. Everything left over goes to chat, and
+     the pair is centred rather than stretched. */
   main.app {
+    --chat-w: 420px;
+    /* header + vertical padding + controls row + row gap */
+    --chrome-v: 116px;
+    /* horizontal padding + column gap + chat column */
+    --chrome-h: calc(34px + var(--chat-w));
+
+    /* Two stacked 16:9 tiles make the stage 8/9. Size it from whichever bound
+       is tighter so the feeds stay pixel-exact 16:9 in any window shape, and
+       any slack sits outside the stage rather than as bars inside it. */
+    --stage-w: min(
+      calc(100vw - var(--chrome-h)),
+      calc((100dvh - var(--chrome-v)) * 8 / 9)
+    );
+
     display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(280px, 26vw, 360px);
+    grid-template-columns: var(--stage-w) var(--chat-w);
     grid-template-rows: minmax(0, 1fr) auto;
     grid-template-areas:
       'stage chat'
       'controls chat';
-    padding: 14px;
-    gap: 12px;
+    justify-content: center;
+    padding: 12px;
+    gap: 10px;
   }
 
   .stage {
     grid-area: stage;
-    /* Stacked, not side by side, and sized by the row rather than a clamp. */
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 1fr;
-    height: auto;
+    width: 100%;
+    height: calc(var(--stage-w) * 9 / 8);
+    max-height: 100%;
     min-height: 0;
+    align-self: center;
   }
 
   .video-tile + .video-tile {
