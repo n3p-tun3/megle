@@ -15,8 +15,8 @@
     <div class="header-right">
       <div class="header-group">
         <span id="online-count" class="online-count">0 online</span>
-        <div id="status" class="status" data-state="idle">
-          <span class="status-dot"></span>
+        <div id="status" class="status" data-state="idle" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
           <span id="status-text">Idle</span>
         </div>
       </div>
@@ -62,7 +62,7 @@
 
     <section class="chat">
       <div id="chat-log" class="chat-log" role="log" aria-live="polite"></div>
-      <p id="typing-indicator" class="typing-indicator" hidden>Stranger is typing...</p>
+      <p id="typing-indicator" class="typing-indicator" role="status" aria-live="polite" hidden>Stranger is typing...</p>
       <form id="chat-form" class="chat-form">
         <input
           id="chat-input"

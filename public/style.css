@@ -364,7 +364,9 @@ video.active {
     color 0.15s ease, opacity 0.15s ease;
 }
 
-.btn:focus-visible {
+.btn:focus-visible,
+.tile-btn:focus-visible,
+.icon-btn:focus-visible {
   outline: 2px solid var(--accent-hover);
   outline-offset: 2px;
 }
@@ -540,8 +542,9 @@ video.active {
   color: var(--text-placeholder);
 }
 
-.chat-input:focus {
-  outline: none;
+.chat-input:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 1px;
   border-color: var(--accent);
 }
 
@@ -666,8 +669,9 @@ main.centered {
   color: var(--text-placeholder);
 }
 
-.field-input:focus {
-  outline: none;
+.field-input:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 1px;
   border-color: var(--accent);
 }
 
