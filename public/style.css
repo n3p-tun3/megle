@@ -51,7 +51,22 @@ header {
   gap: 12px;
   height: 52px;
   padding: 0 16px;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brand-mark {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--accent);
+  flex: none;
 }
 
 header h1 {
@@ -64,9 +79,22 @@ header h1 {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.header-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-strong);
+  flex: none;
 }
 
 .online-count {
@@ -113,17 +141,36 @@ header h1 {
 .session {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.session a {
+#session-email {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius);
   color: var(--text-muted);
   text-decoration: none;
-  transition: color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.session a:hover {
+.icon-btn:hover {
+  background: rgb(255 255 255 / 0.07);
   color: var(--text);
+}
+
+.icon-btn .icon {
+  width: 15px;
+  height: 15px;
 }
 
 /* ---------- app shell ---------- */
