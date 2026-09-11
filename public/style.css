@@ -259,16 +259,23 @@ video.active {
 }
 
 .tile-btn {
-  height: 26px;
-  padding: 0 10px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgb(255 255 255 / 0.16);
   border-radius: var(--radius);
   background: rgb(0 0 0 / 0.55);
   color: var(--text);
-  font-family: inherit;
-  font-size: 0.72rem;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tile-btn .icon {
+  width: 14px;
+  height: 14px;
 }
 
 .tile-btn:hover {
@@ -322,6 +329,25 @@ video.active {
 .btn:disabled {
   opacity: 0.38;
   cursor: not-allowed;
+}
+
+/* Square variant for icon-only buttons (e.g. chat send), sized to match the
+   text buttons' height so they sit flush in the same row. */
+.btn-icon {
+  width: var(--control-h);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Phosphor icons ship as fill="currentColor", so they inherit the button's
+   text color automatically and need no per-icon color rules. */
+.icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: none;
 }
 
 .btn-primary {

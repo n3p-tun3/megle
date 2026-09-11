@@ -167,12 +167,24 @@ function flashStage() {
   stageEl.classList.add('flash');
 }
 
+// Phosphor Icons (MIT), vendored inline since this project has no build step
+// to pull them from npm at build time. Only the "off" states need storing
+// here — the "on" states are the icons already inlined in index.html.
+const ICON_MICROPHONE = micBtn.innerHTML;
+const ICON_MICROPHONE_SLASH =
+  '<svg class="icon" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.92,218.62l-160-176A8,8,0,0,0,42.08,53.38L80,95.09V128a48,48,0,0,0,69.11,43.12l11.1,12.2A63.41,63.41,0,0,1,128,192a64.07,64.07,0,0,1-64-64,8,8,0,0,0-16,0,80.11,80.11,0,0,0,72,79.6V240a8,8,0,0,0,16,0V207.59a78.83,78.83,0,0,0,35.16-12.22l30.92,34a8,8,0,1,0,11.84-10.76ZM128,160a32,32,0,0,1-32-32V112.69l41.66,45.82A32,32,0,0,1,128,160Zm57.52-3.91A63.32,63.32,0,0,0,192,128a8,8,0,0,1,16,0,79.16,79.16,0,0,1-8.11,35.12,8,8,0,0,1-7.19,4.49,7.88,7.88,0,0,1-3.51-.82A8,8,0,0,1,185.52,156.09ZM84,44.87A48,48,0,0,1,176,64v64a49.19,49.19,0,0,1-.26,5,8,8,0,0,1-8,7.17,8.13,8.13,0,0,1-.84,0,8,8,0,0,1-7.12-8.79c.11-1.1.17-2.24.17-3.36V64A32,32,0,0,0,98.64,51.25,8,8,0,1,1,84,44.87Z"/></svg>';
+const ICON_VIDEO_CAMERA = camBtn.innerHTML;
+const ICON_VIDEO_CAMERA_SLASH =
+  '<svg class="icon" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M251.77,73a8,8,0,0,0-8.21.39L208,97.05V72a16,16,0,0,0-16-16H113.06a8,8,0,0,0,0,16H192v87.63a8,8,0,0,0,16,0V159l35.56,23.71A8,8,0,0,0,248,184a8,8,0,0,0,8-8V80A8,8,0,0,0,251.77,73ZM240,161.05l-32-21.33V116.28L240,95ZM53.92,34.62A8,8,0,1,0,42.08,45.38L51.73,56H32A16,16,0,0,0,16,72V184a16,16,0,0,0,16,16H182.64l19.44,21.38a8,8,0,1,0,11.84-10.76ZM32,184V72H66.28L168.1,184Z"/></svg>';
+
 function resetMediaToggles() {
   micBtn.setAttribute('aria-pressed', 'false');
-  micBtn.textContent = 'Mic';
+  micBtn.innerHTML = ICON_MICROPHONE;
+  micBtn.setAttribute('aria-label', 'Mute microphone');
   micBtn.title = 'Mute microphone';
   camBtn.setAttribute('aria-pressed', 'false');
-  camBtn.textContent = 'Cam';
+  camBtn.innerHTML = ICON_VIDEO_CAMERA;
+  camBtn.setAttribute('aria-label', 'Turn camera off');
   camBtn.title = 'Turn camera off';
   cameraOffLabel.hidden = true;
 }
@@ -183,8 +195,10 @@ function toggleMic() {
   track.enabled = !track.enabled;
   const muted = !track.enabled;
   micBtn.setAttribute('aria-pressed', String(muted));
-  micBtn.textContent = muted ? 'Mic off' : 'Mic';
-  micBtn.title = muted ? 'Unmute microphone' : 'Mute microphone';
+  micBtn.innerHTML = muted ? ICON_MICROPHONE_SLASH : ICON_MICROPHONE;
+  const label = muted ? 'Unmute microphone' : 'Mute microphone';
+  micBtn.setAttribute('aria-label', label);
+  micBtn.title = label;
 }
 
 function toggleCamera() {
@@ -193,8 +207,10 @@ function toggleCamera() {
   track.enabled = !track.enabled;
   const off = !track.enabled;
   camBtn.setAttribute('aria-pressed', String(off));
-  camBtn.textContent = off ? 'Cam off' : 'Cam';
-  camBtn.title = off ? 'Turn camera on' : 'Turn camera off';
+  camBtn.innerHTML = off ? ICON_VIDEO_CAMERA_SLASH : ICON_VIDEO_CAMERA;
+  const label = off ? 'Turn camera on' : 'Turn camera off';
+  camBtn.setAttribute('aria-label', label);
+  camBtn.title = label;
   cameraOffLabel.hidden = !off;
 }
 
@@ -404,7 +420,13 @@ function next() {
   sendToServer({ type: 'next' });
 }
 
-function stop() {
+// Named endCall rather than stop: a bare top-level `function stop` becomes
+// `window.stop`, permanently shadowing the native Window.stop() API (verified
+// via `stop.toString()` returning this function body). Anything that ever
+// calls window.stop() expecting "cancel page load" — a browser extension,
+// other embedded script, or automation tooling — would silently end the
+// user's call instead.
+function endCall() {
   wantMatch = false;
   teardownPeer();
 
@@ -448,7 +470,7 @@ chatInput.addEventListener('input', () => {
 
 startBtn.addEventListener('click', start);
 nextBtn.addEventListener('click', next);
-stopBtn.addEventListener('click', stop);
+stopBtn.addEventListener('click', endCall);
 micBtn.addEventListener('click', toggleMic);
 camBtn.addEventListener('click', toggleCamera);
 
@@ -465,12 +487,12 @@ if (pipSupported) {
     }
   });
 
-  remoteVideo.addEventListener('enterpictureinpicture', () => {
-    pipBtn.textContent = 'Return to tab';
-  });
-  remoteVideo.addEventListener('leavepictureinpicture', () => {
-    pipBtn.textContent = 'Pop out';
-  });
+  const setPipLabel = (text) => {
+    pipBtn.setAttribute('aria-label', text);
+    pipBtn.title = text;
+  };
+  remoteVideo.addEventListener('enterpictureinpicture', () => setPipLabel('Return to tab'));
+  remoteVideo.addEventListener('leavepictureinpicture', () => setPipLabel('Pop out into a floating window'));
 
   // Best-effort: pop the remote feed out when the tab is backgrounded mid
   // call, so the conversation doesn't just freeze off-screen. Some browsers
