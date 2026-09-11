@@ -27,10 +27,18 @@
       <div class="video-tile">
         <video id="local-video" autoplay playsinline muted></video>
         <span class="video-label">You</span>
+        <span class="camera-off-label" hidden>Camera off</span>
+        <div class="tile-controls">
+          <button id="mic-btn" class="tile-btn" type="button" aria-pressed="false" title="Mute microphone">Mic</button>
+          <button id="cam-btn" class="tile-btn" type="button" aria-pressed="false" title="Turn camera off">Cam</button>
+        </div>
       </div>
       <div class="video-tile">
         <video id="remote-video" autoplay playsinline></video>
         <span class="video-label">Stranger</span>
+        <button id="pip-btn" class="tile-btn tile-btn-corner" type="button" hidden title="Pop out into a floating window">
+          Pop out
+        </button>
       </div>
     </div>
 
@@ -42,6 +50,7 @@
 
     <section class="chat">
       <div id="chat-log" class="chat-log" role="log" aria-live="polite"></div>
+      <p id="typing-indicator" class="typing-indicator" hidden>Stranger is typing...</p>
       <form id="chat-form" class="chat-form">
         <input
           id="chat-input"

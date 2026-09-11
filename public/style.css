@@ -178,6 +178,22 @@ main.app {
   overflow: hidden;
 }
 
+/* Brief feedback that a match just happened, since the status text change
+   alone is easy to miss. box-shadow rather than border so it costs no
+   layout, and animation-fill-mode returns it cleanly to transparent. */
+.stage.flash {
+  animation: match-flash 700ms ease-out;
+}
+
+@keyframes match-flash {
+  0% {
+    box-shadow: inset 0 0 0 2px var(--dot-connected);
+  }
+  100% {
+    box-shadow: inset 0 0 0 2px transparent;
+  }
+}
+
 .video-tile {
   position: relative;
   min-width: 0;
@@ -215,6 +231,60 @@ video.active {
   color: var(--text);
   font-size: 0.7rem;
   letter-spacing: 0.02em;
+}
+
+/* A centered pill rather than a full-tile overlay: the track already
+   renders black frames when disabled, this just disambiguates "off" from
+   "frozen" or "disconnected". */
+.camera-off-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 0.55);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* Small overlay buttons on top of a video tile: muted until hovered, so they
+   don't compete with the video itself. */
+.tile-controls {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.tile-btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 0.55);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tile-btn:hover {
+  background: rgb(0 0 0 / 0.7);
+  border-color: rgb(255 255 255 / 0.3);
+}
+
+.tile-btn[aria-pressed='true'] {
+  border-color: var(--dot-error);
+  color: #fca5a5;
+}
+
+.tile-btn-corner {
+  position: absolute;
+  right: 8px;
+  top: 8px;
 }
 
 /* ---------- controls ---------- */
@@ -358,6 +428,18 @@ video.active {
 .chat-msg[data-from='system'] {
   color: var(--text-muted);
   font-size: 0.82rem;
+}
+
+.typing-indicator {
+  flex: none;
+  margin: 0;
+  padding: 0 12px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: italic;
 }
 
 .chat-form {
@@ -576,7 +658,8 @@ main.centered {
 @media (prefers-reduced-motion: reduce) {
   .status-dot,
   video,
-  .btn {
+  .btn,
+  .stage {
     animation: none !important;
     transition: none !important;
   }

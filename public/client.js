@@ -44,20 +44,27 @@ const statusEl = document.getElementById('status');
 const statusTextEl = document.getElementById('status-text');
 const onlineEl = document.getElementById('online-count');
 const sessionEmailEl = document.getElementById('session-email');
+const stageEl = document.querySelector('.stage');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 const startBtn = document.getElementById('start-btn');
 const nextBtn = document.getElementById('next-btn');
 const stopBtn = document.getElementById('stop-btn');
+const micBtn = document.getElementById('mic-btn');
+const camBtn = document.getElementById('cam-btn');
+const cameraOffLabel = document.querySelector('.camera-off-label');
+const pipBtn = document.getElementById('pip-btn');
 const chatLog = document.getElementById('chat-log');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
+const typingIndicator = document.getElementById('typing-indicator');
 
 let ws = null;
 let pc = null;
 let localStream = null;
 let iceServers = FALLBACK_ICE_SERVERS;
+let audioCtx = null;
 
 // True once the user has pressed Start, so a reconnect knows to rejoin the
 // queue rather than sitting idle.
@@ -65,6 +72,15 @@ let wantMatch = false;
 let leavingPage = false;
 let reconnectDelay = 1000;
 let reconnectTimer = null;
+
+let typingHideTimer = null;
+let lastTypingSentAt = 0;
+const TYPING_SEND_INTERVAL_MS = 1200;
+const TYPING_HIDE_DELAY_MS = 3000;
+
+// Picture-in-picture is only offered on browsers that actually support it.
+const pipSupported =
+  document.pictureInPictureEnabled && typeof remoteVideo.requestPictureInPicture === 'function';
 
 function setStatus(text, state = 'idle') {
   statusTextEl.textContent = text;
@@ -105,6 +121,81 @@ function setChatEnabled(enabled) {
   chatInput.disabled = !enabled;
   chatSend.disabled = !enabled;
   chatInput.placeholder = enabled ? 'Say something' : 'Start a chat to send messages';
+}
+
+function showTypingIndicator() {
+  typingIndicator.hidden = false;
+  clearTimeout(typingHideTimer);
+  typingHideTimer = setTimeout(() => {
+    typingIndicator.hidden = true;
+  }, TYPING_HIDE_DELAY_MS);
+}
+
+function hideTypingIndicator() {
+  clearTimeout(typingHideTimer);
+  typingIndicator.hidden = true;
+}
+
+// Synthesized rather than an audio file: a two-note chime is a few lines of
+// Web Audio API and keeps the app dependency-free. Volume is kept low and
+// short since a call can be answered anywhere, including a quiet room.
+function playMatchChime() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  [660, 880].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const t0 = now + i * 0.09;
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.07, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.2);
+  });
+}
+
+stageEl.addEventListener('animationend', (event) => {
+  if (event.animationName === 'match-flash') stageEl.classList.remove('flash');
+});
+
+function flashStage() {
+  stageEl.classList.remove('flash');
+  void stageEl.offsetWidth; // restart the animation if it's already mid-flash
+  stageEl.classList.add('flash');
+}
+
+function resetMediaToggles() {
+  micBtn.setAttribute('aria-pressed', 'false');
+  micBtn.textContent = 'Mic';
+  micBtn.title = 'Mute microphone';
+  camBtn.setAttribute('aria-pressed', 'false');
+  camBtn.textContent = 'Cam';
+  camBtn.title = 'Turn camera off';
+  cameraOffLabel.hidden = true;
+}
+
+function toggleMic() {
+  const track = localStream?.getAudioTracks()[0];
+  if (!track) return;
+  track.enabled = !track.enabled;
+  const muted = !track.enabled;
+  micBtn.setAttribute('aria-pressed', String(muted));
+  micBtn.textContent = muted ? 'Mic off' : 'Mic';
+  micBtn.title = muted ? 'Unmute microphone' : 'Mute microphone';
+}
+
+function toggleCamera() {
+  const track = localStream?.getVideoTracks()[0];
+  if (!track) return;
+  track.enabled = !track.enabled;
+  const off = !track.enabled;
+  camBtn.setAttribute('aria-pressed', String(off));
+  camBtn.textContent = off ? 'Cam off' : 'Cam';
+  camBtn.title = off ? 'Turn camera on' : 'Turn camera off';
+  cameraOffLabel.hidden = !off;
 }
 
 function wsUrl() {
@@ -174,6 +265,9 @@ function handleMessage(msg) {
       addChatMessage('You are now chatting with a stranger.', 'system');
       setChatEnabled(true);
       setupPeer(msg.initiator);
+      playMatchChime();
+      flashStage();
+      if (pipSupported) pipBtn.hidden = false;
       break;
 
     case 'signal':
@@ -181,7 +275,12 @@ function handleMessage(msg) {
       break;
 
     case 'chat':
+      hideTypingIndicator();
       addChatMessage(msg.text, 'stranger');
+      break;
+
+    case 'typing':
+      showTypingIndicator();
       break;
 
     case 'partner-left':
@@ -199,6 +298,15 @@ function handleMessage(msg) {
 async function start() {
   startBtn.disabled = true;
 
+  // Created here, inside a click handler, so the browser's autoplay policy
+  // treats it as user-initiated and later programmatic playMatchChime()
+  // calls (triggered by a server message, not a gesture) are allowed to play.
+  if (!audioCtx) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) audioCtx = new AudioCtx();
+  }
+  if (audioCtx?.state === 'suspended') audioCtx.resume();
+
   iceServers = await getIceServers();
 
   try {
@@ -210,6 +318,7 @@ async function start() {
   }
   localVideo.srcObject = localStream;
   localVideo.classList.add('active');
+  resetMediaToggles();
 
   const settings = localStream.getVideoTracks()[0]?.getSettings();
   if (settings) {
@@ -280,6 +389,11 @@ function teardownPeer() {
   }
   remoteVideo.classList.remove('active');
   remoteVideo.srcObject = null;
+  hideTypingIndicator();
+  pipBtn.hidden = true;
+  if (document.pictureInPictureElement === remoteVideo) {
+    document.exitPictureInPicture().catch(() => {});
+  }
 }
 
 function next() {
@@ -304,6 +418,7 @@ function stop() {
   }
   localVideo.classList.remove('active');
   localVideo.srcObject = null;
+  resetMediaToggles();
   setChatEnabled(false);
   clearChat();
   setStatus('Idle', 'idle');
@@ -323,9 +438,54 @@ chatForm.addEventListener('submit', (event) => {
   chatInput.value = '';
 });
 
+chatInput.addEventListener('input', () => {
+  if (chatInput.disabled) return;
+  const now = Date.now();
+  if (now - lastTypingSentAt < TYPING_SEND_INTERVAL_MS) return;
+  lastTypingSentAt = now;
+  sendToServer({ type: 'typing' });
+});
+
 startBtn.addEventListener('click', start);
 nextBtn.addEventListener('click', next);
 stopBtn.addEventListener('click', stop);
+micBtn.addEventListener('click', toggleMic);
+camBtn.addEventListener('click', toggleCamera);
+
+if (pipSupported) {
+  pipBtn.addEventListener('click', async () => {
+    try {
+      if (document.pictureInPictureElement === remoteVideo) {
+        await document.exitPictureInPicture();
+      } else {
+        await remoteVideo.requestPictureInPicture();
+      }
+    } catch (err) {
+      console.warn('Picture-in-picture failed', err);
+    }
+  });
+
+  remoteVideo.addEventListener('enterpictureinpicture', () => {
+    pipBtn.textContent = 'Return to tab';
+  });
+  remoteVideo.addEventListener('leavepictureinpicture', () => {
+    pipBtn.textContent = 'Pop out';
+  });
+
+  // Best-effort: pop the remote feed out when the tab is backgrounded mid
+  // call, so the conversation doesn't just freeze off-screen. Some browsers
+  // reject a request that isn't tied to a user gesture, so failures here are
+  // silent — the manual button above is the reliable fallback.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (remoteVideo.classList.contains('active') && !document.pictureInPictureElement) {
+        remoteVideo.requestPictureInPicture().catch(() => {});
+      }
+    } else if (document.pictureInPictureElement === remoteVideo) {
+      document.exitPictureInPicture().catch(() => {});
+    }
+  });
+}
 
 window.addEventListener('pagehide', () => {
   leavingPage = true;

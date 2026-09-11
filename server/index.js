@@ -306,6 +306,12 @@ wss.on('connection', (ws, req) => {
         break;
       }
 
+      case 'typing': {
+        const partner = partners.get(ws);
+        if (partner) send(partner, { type: 'typing' });
+        break;
+      }
+
       case 'next':
         unpair(ws, { requeueSelf: true });
         break;
