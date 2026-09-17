@@ -6,9 +6,17 @@
   --text: #ededf0;
   --text-muted: #9a9aa2;
   --text-placeholder: #85858d;
-  --accent: #2f6bff;
-  --accent-hover: #4a7dff;
-  --accent-active: #2257d8;
+  /* Teal-leaning mint (H185), not pure green: a 43deg hue gap from
+     --dot-connected (H142) so the "You" chat label and the connected-status
+     dot/"Stranger" label stay visually distinct rather than reading as the
+     same color. Computed to pass 4.5:1 as text on --bg either way. */
+  --accent: #36d4e2;
+  --accent-hover: #55dbe7;
+  --accent-active: #1dbfcd;
+  /* Text/icon color for content sitting on top of an accent-filled surface.
+     Mint is high-luminance, so dark text reads far better than white here
+     (11:1 vs 1.8:1) — the opposite pairing from the old blue. */
+  --on-accent: #0a0a0b;
   --dot-idle: #52525b;
   --dot-searching: #eab308;
   --dot-connected: #22c55e;
@@ -59,14 +67,6 @@ header {
   display: flex;
   align-items: center;
   gap: 9px;
-}
-
-.brand-mark {
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
-  background: var(--accent);
-  flex: none;
 }
 
 header h1 {
@@ -412,7 +412,7 @@ video.active {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
