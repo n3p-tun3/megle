@@ -160,12 +160,16 @@ header h1 {
   border-radius: var(--radius);
   color: var(--text-muted);
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease-out;
 }
 
 .icon-btn:hover {
   background: rgb(255 255 255 / 0.07);
   color: var(--text);
+}
+
+.icon-btn:active {
+  transform: scale(0.93);
 }
 
 .icon-btn .icon {
@@ -229,7 +233,7 @@ main.app {
    alone is easy to miss. box-shadow rather than border so it costs no
    layout, and animation-fill-mode returns it cleanly to transparent. */
 .stage.flash {
-  animation: match-flash 700ms ease-out;
+  animation: match-flash 450ms ease-out;
 }
 
 @keyframes match-flash {
@@ -261,7 +265,9 @@ video {
      cropping the edges off someone's face. */
   object-fit: contain;
   opacity: 0;
-  transition: opacity 0.35s ease;
+  /* ease-out: this is an entrance, so it should start fast rather than
+     ease into visibility. */
+  transition: opacity 0.35s ease-out;
 }
 
 video.active {
@@ -317,7 +323,8 @@ video.active {
   background: rgb(0 0 0 / 0.55);
   color: var(--text);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    transform 0.1s ease-out;
 }
 
 .tile-btn .icon {
@@ -328,6 +335,10 @@ video.active {
 .tile-btn:hover {
   background: rgb(0 0 0 / 0.7);
   border-color: rgb(255 255 255 / 0.3);
+}
+
+.tile-btn:active {
+  transform: scale(0.9);
 }
 
 .tile-btn[aria-pressed='true'] {
@@ -732,12 +743,18 @@ main.centered {
   }
 }
 
+/* Reduced motion means fewer and gentler animations, not zero: opacity and
+   color transitions aid comprehension and stay, only genuine movement and
+   looping motion (the searching pulse, the match flash, button press) go. */
 @media (prefers-reduced-motion: reduce) {
   .status-dot,
-  video,
-  .btn,
   .stage {
     animation: none !important;
-    transition: none !important;
+  }
+
+  .btn:active,
+  .tile-btn:active,
+  .icon-btn:active {
+    transform: none !important;
   }
 }
