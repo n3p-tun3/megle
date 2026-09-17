@@ -50,9 +50,12 @@ const remoteVideo = document.getElementById('remote-video');
 const startBtn = document.getElementById('start-btn');
 const nextBtn = document.getElementById('next-btn');
 const stopBtn = document.getElementById('stop-btn');
-const micBtn = document.getElementById('mic-btn');
-const camBtn = document.getElementById('cam-btn');
-const cameraOffLabel = document.querySelector('.camera-off-label');
+// Mic/camera toggles: not shipping yet, revisiting alongside the admin
+// board. Markup is commented out in index.html to match — see the mirrored
+// comment blocks below for the rest of this feature.
+// const micBtn = document.getElementById('mic-btn');
+// const camBtn = document.getElementById('cam-btn');
+// const cameraOffLabel = document.querySelector('.camera-off-label');
 const pipBtn = document.getElementById('pip-btn');
 const chatLog = document.getElementById('chat-log');
 const chatForm = document.getElementById('chat-form');
@@ -167,6 +170,10 @@ function flashStage() {
   stageEl.classList.add('flash');
 }
 
+// Mic/camera toggles: not shipping yet, revisiting alongside the admin
+// board. Kept commented rather than deleted since it's fully working code —
+// see the matching commented block in index.html for the button markup.
+/*
 // Phosphor Icons (MIT), vendored inline since this project has no build step
 // to pull them from npm at build time. Only the "off" states need storing
 // here — the "on" states are the icons already inlined in index.html.
@@ -213,6 +220,7 @@ function toggleCamera() {
   camBtn.title = label;
   cameraOffLabel.hidden = !off;
 }
+*/
 
 function wsUrl() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -334,7 +342,7 @@ async function start() {
   }
   localVideo.srcObject = localStream;
   localVideo.classList.add('active');
-  resetMediaToggles();
+  // resetMediaToggles(); // mic/camera toggles not shipped yet
 
   const settings = localStream.getVideoTracks()[0]?.getSettings();
   if (settings) {
@@ -440,7 +448,7 @@ function endCall() {
   }
   localVideo.classList.remove('active');
   localVideo.srcObject = null;
-  resetMediaToggles();
+  // resetMediaToggles(); // mic/camera toggles not shipped yet
   setChatEnabled(false);
   clearChat();
   setStatus('Idle', 'idle');
@@ -471,8 +479,8 @@ chatInput.addEventListener('input', () => {
 startBtn.addEventListener('click', start);
 nextBtn.addEventListener('click', next);
 stopBtn.addEventListener('click', endCall);
-micBtn.addEventListener('click', toggleMic);
-camBtn.addEventListener('click', toggleCamera);
+// micBtn.addEventListener('click', toggleMic); // mic/camera toggles not shipped yet
+// camBtn.addEventListener('click', toggleCamera);
 
 if (pipSupported) {
   pipBtn.addEventListener('click', async () => {
