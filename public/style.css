@@ -291,6 +291,84 @@ video.active {
   letter-spacing: 0.02em;
 }
 
+/* ---------- empty stranger tile ---------- */
+
+/* Before there's a stranger: one calm line while idle, and faint TV static
+   while searching or connecting. */
+.remote-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out;
+}
+
+/* Once there's a picture, the placeholder gets out of the way. */
+.video-tile.remote:has(video.active) .remote-empty {
+  opacity: 0;
+}
+
+.remote-empty-copy {
+  display: none;
+  position: relative; /* above the static layer */
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.stage[data-state='idle'] .remote-empty-copy[data-for='idle'],
+.stage[data-state='error'] .remote-empty-copy[data-for='idle'],
+.stage[data-state='searching'] .remote-empty-copy[data-for='searching'],
+.stage[data-state='connected'] .remote-empty-copy[data-for='connecting'] {
+  display: block;
+}
+
+/* TV static: one pre-rendered noise tile (client.js draws it once) on a layer
+   oversized by a tile in every direction, jumped between offsets. Moving it
+   is compositor-only, so nothing is redrawn per frame. Faint on purpose: it
+   should read as "tuning in", not as a flashing screen, and averaged over
+   the screen its brightness stays constant. */
+.remote-empty::before {
+  content: '';
+  position: absolute;
+  inset: -128px;
+  background-image: var(--static);
+  background-size: 128px 128px;
+  image-rendering: pixelated;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.stage[data-state='searching'] .remote-empty::before,
+.stage[data-state='connected'] .remote-empty::before {
+  opacity: 0.14;
+  animation: static-shift 0.9s steps(1, end) infinite;
+}
+
+/* Nothing left to wait for: stop the static instead of animating it unseen. */
+.video-tile.remote:has(video.active) .remote-empty::before {
+  animation: none;
+}
+
+@keyframes static-shift {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-37px, -91px); }
+  20% { transform: translate(-113px, -22px); }
+  30% { transform: translate(-58px, -120px); }
+  40% { transform: translate(-9px, -64px); }
+  50% { transform: translate(-96px, -5px); }
+  60% { transform: translate(-71px, -103px); }
+  70% { transform: translate(-124px, -47px); }
+  80% { transform: translate(-18px, -110px); }
+  90% { transform: translate(-83px, -33px); }
+}
+
 /* A centered pill rather than a full-tile overlay: the track already
    renders black frames when disabled, this just disambiguates "off" from
    "frozen" or "disconnected". */
@@ -697,7 +775,12 @@ video.active {
     top: 0;
     left: 0;
     z-index: 2;
-    width: clamp(84px, 26vw, 128px);
+    /* Constant long side, whichever way round the camera is: a portrait
+       camera makes a tall card, a landscape one a wide card of equal
+       presence, instead of a fixed width that squashes landscape to a
+       sliver. */
+    --pip-long: clamp(150px, 48vw, 210px);
+    width: calc(var(--pip-long) * min(1, var(--pip-ratio, 0.75)));
     aspect-ratio: var(--pip-ar, 3 / 4);
     border-radius: var(--radius);
     border: 1px solid rgb(255 255 255 / 0.14);
@@ -944,7 +1027,8 @@ main.centered {
    looping motion (the searching pulse, the match flash, button press) go. */
 @media (prefers-reduced-motion: reduce) {
   .status-dot,
-  .stage {
+  .stage,
+  .remote-empty::before {
     animation: none !important;
   }
 

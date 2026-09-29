@@ -12,23 +12,42 @@ const FALLBACK_ICE_SERVERS = [
 // Unconstrained `video: true` often yields 640x480 (4:3), which pillarboxes
 // badly in the wide stage tiles. These are "ideal", not "exact", so a camera
 // that cannot do 720p still works and just returns its closest match.
-// A phone held upright asks for portrait instead, so the stranger's
-// full-height mobile screen is filled rather than letterboxed.
-function mediaConstraints() {
-  const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)').matches;
-  return {
-    video: {
-      width: { ideal: portrait ? 720 : 1280 },
-      height: { ideal: portrait ? 1280 : 720 },
-      aspectRatio: { ideal: portrait ? 9 / 16 : 16 / 9 },
-      facingMode: 'user',
-    },
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
-  };
+//
+// Always asked for in landscape terms, even on an upright phone: mobile
+// browsers generally read width/height against the sensor's native landscape
+// orientation and then rotate frames to match how the phone is held, so
+// 1280x720 comes back as 720x1280 portrait. Swapping them here gets swapped
+// back by the browser and yields a landscape strip. Not every browser agrees,
+// so correctCameraOrientation() checks what actually arrived.
+const MEDIA_CONSTRAINTS = {
+  video: {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    aspectRatio: { ideal: 16 / 9 },
+    facingMode: 'user',
+  },
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  },
+};
+
+// An upright phone should send an upright picture. If this browser read the
+// request the other way and delivered landscape frames anyway, ask again with
+// the dimensions swapped; ideal constraints mean a camera that can't comply
+// just keeps what it has.
+async function correctCameraOrientation(track) {
+  if (!matchMedia('(orientation: portrait) and (pointer: coarse)').matches) return;
+  const { width, height } = track.getSettings();
+  if (!width || !height || height >= width) return;
+  try {
+    await track.applyConstraints({ width: { ideal: 720 }, height: { ideal: 1280 } });
+  } catch {
+    // Keep the landscape stream; the layout still shows it whole.
+  }
+  const after = track.getSettings();
+  console.log(`Camera orientation corrected: ${width}x${height} -> ${after.width}x${after.height}`);
 }
 
 async function getIceServers() {
@@ -95,7 +114,30 @@ const pipSupported =
 function setStatus(text, state = 'idle') {
   statusTextEl.textContent = text;
   statusEl.dataset.state = state;
+  // Drives what the empty stranger tile shows: a prompt, or static.
+  stageEl.dataset.state = state;
 }
+
+// One tile of TV static, drawn once. CSS tiles it and jumps it between
+// offsets, so no noise is generated per frame.
+function makeStaticTile(size = 128) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  for (let i = 0; i < image.data.length; i += 4) {
+    const v = Math.random() * 255;
+    image.data[i] = v;
+    image.data[i + 1] = v;
+    image.data[i + 2] = v;
+    image.data[i + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+  return canvas.toDataURL();
+}
+
+stageEl.style.setProperty('--static', `url("${makeStaticTile()}")`);
 
 function setOnlineCount(count) {
   onlineEl.textContent = count === 1 ? '1 online' : `${count} online`;
@@ -198,7 +240,11 @@ function fitVideo(video) {
 // The mobile self-view card takes your camera's shape, so it's never cropped.
 function syncLocalAspect() {
   const { videoWidth: vw, videoHeight: vh } = localVideo;
-  if (vw && vh) localTile.style.setProperty('--pip-ar', `${vw} / ${vh}`);
+  if (!vw || !vh) return;
+  localTile.style.setProperty('--pip-ar', `${vw} / ${vh}`);
+  // Numeric form for sizing: the card keeps a constant long side, so a
+  // landscape camera gives a wide card rather than a thin sliver.
+  localTile.style.setProperty('--pip-ratio', String(vw / vh));
 }
 
 for (const video of [localVideo, remoteVideo]) {
@@ -615,12 +661,16 @@ async function start() {
   iceServers = await getIceServers();
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints());
+    localStream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
   } catch (err) {
     setStatus(`Camera or microphone access failed: ${err.message}`, 'error');
     startBtn.disabled = false;
     return;
   }
+  // Before the preview or any stranger sees it, so the first frame is already
+  // the right way up.
+  const cameraTrack = localStream.getVideoTracks()[0];
+  if (cameraTrack) await correctCameraOrientation(cameraTrack);
   localVideo.srcObject = localStream;
   localVideo.classList.add('active');
   // resetMediaToggles(); // mic/camera toggles not shipped yet

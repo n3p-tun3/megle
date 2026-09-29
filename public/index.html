@@ -32,7 +32,7 @@
   </header>
 
   <main class="app">
-    <div class="stage">
+    <div class="stage" data-state="idle">
       <div id="local-tile" class="video-tile local">
         <video id="local-video" autoplay playsinline muted></video>
         <span class="video-label">You</span>
@@ -51,6 +51,13 @@
       </div>
       <div class="video-tile remote">
         <video id="remote-video" autoplay playsinline></video>
+        <!-- What the stranger's tile shows before there's a stranger. The
+             header status already announces state, so this is visual only. -->
+        <div class="remote-empty" aria-hidden="true">
+          <p class="remote-empty-copy" data-for="idle">Press Start to meet someone</p>
+          <p class="remote-empty-copy" data-for="searching">Looking for someone…</p>
+          <p class="remote-empty-copy" data-for="connecting">Connecting…</p>
+        </div>
         <span class="video-label">Stranger</span>
         <button id="pip-btn" class="tile-btn tile-btn-corner" type="button" hidden aria-label="Pop out into a floating window" title="Pop out into a floating window">
           <svg class="icon" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M216,48H40A16,16,0,0,0,24,64V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V64A16,16,0,0,0,216,48ZM40,64H216v56H136a8,8,0,0,0-8,8v64H40ZM216,192H144V136h72v56Z"/></svg>
