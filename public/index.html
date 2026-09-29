@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- resizes-content: when the keyboard opens on Android, shrink the layout
+       instead of covering it, so the chat input stays visible above it. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
   <title>meetastu</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -31,7 +33,7 @@
 
   <main class="app">
     <div class="stage">
-      <div class="video-tile">
+      <div id="local-tile" class="video-tile local">
         <video id="local-video" autoplay playsinline muted></video>
         <span class="video-label">You</span>
         <!-- Mic/camera toggles: not shipping yet, revisiting alongside the
@@ -47,7 +49,7 @@
         </div>
         -->
       </div>
-      <div class="video-tile">
+      <div class="video-tile remote">
         <video id="remote-video" autoplay playsinline></video>
         <span class="video-label">Stranger</span>
         <button id="pip-btn" class="tile-btn tile-btn-corner" type="button" hidden aria-label="Pop out into a floating window" title="Pop out into a floating window">

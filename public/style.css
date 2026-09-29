@@ -22,6 +22,14 @@
   --dot-connected: #22c55e;
   --dot-error: #ef4444;
 
+  /* Dark translucent material for chrome floating over live video (mobile).
+     Each opacity is the minimum that keeps every text pair on it at 4.5:1 or
+     better even when the frame underneath is pure white. The larger bars are
+     thicker than the small chips, so they read as heavier surfaces. */
+  --material-chip: rgb(10 10 11 / 0.8);
+  --material-bar: rgb(10 10 11 / 0.85);
+  --text-muted-on-material: #aaaab2;
+
   /* One radius scale: 6px on every panel and control. The video stage is the
      single exception at 0, since it reads as a screen rather than a card. */
   --radius: 6px;
@@ -187,20 +195,10 @@ main {
   gap: 24px;
 }
 
-/* Mobile first: stage on top, controls in the middle, chat filling the rest.
-   Only the chat log scrolls; the page itself never does. */
+/* Shared shell. The two layout queries further down (two-column desktop,
+   FaceTime-style mobile) are exact complements, so one of them always
+   applies on top of this. Only the chat log scrolls; the page never does. */
 main.app {
-  /* Floor for the chat so a tall stage cannot squeeze it to nothing. */
-  --chat-min-h: 180px;
-  /* header + vertical padding + controls row + both row gaps */
-  --chrome-v: 136px;
-  /* Two stacked 16:9 tiles make the stage 8/9. Take whichever bound is
-     tighter so the feeds are pixel-exact 16:9 with no bars inside them. */
-  --stage-w: min(
-    calc(100vw - 24px),
-    calc((100dvh - var(--chrome-v) - var(--chat-min-h)) * 8 / 9)
-  );
-
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -261,8 +259,9 @@ video {
   display: block;
   width: 100%;
   height: 100%;
-  /* contain, not cover: show the whole frame and letterbox it rather than
-     cropping the edges off someone's face. */
+  /* contain by default: show the whole frame rather than cropping someone's
+     face. client.js switches a video to cover only when the feed's shape is
+     close enough to its box that filling it crops almost nothing. */
   object-fit: contain;
   opacity: 0;
   /* ease-out: this is an entrance, so it should start fast rather than
@@ -272,6 +271,12 @@ video {
 
 video.active {
   opacity: 1;
+}
+
+/* Your own preview is mirrored, like every camera app and a real mirror.
+   Only the preview flips; the stream the stranger receives is unmirrored. */
+#local-video {
+  transform: scaleX(-1);
 }
 
 .video-label {
@@ -621,6 +626,197 @@ video.active {
 
   .chat {
     grid-area: chat;
+  }
+}
+
+/* ---------- mobile: FaceTime-style ---------- */
+
+/* The exact complement of the two-column query above (narrow, and not a
+   short landscape phone), so exactly one of the two layouts ever applies.
+   The stranger fills the screen, your preview floats as a draggable card,
+   and chat plus controls sit over the bottom of the video as dark material. */
+@media (max-width: 899.98px) and (orientation: portrait),
+  (max-width: 899.98px) and (min-height: 561px) {
+  /* One grid, two layers: the stage spans every row as the base layer, and
+     the chat log, typing line, controls and input stack over its bottom. */
+  main.app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      'log'
+      'typing'
+      'controls'
+      'form';
+    padding: 0;
+    gap: 0;
+  }
+
+  .stage {
+    grid-row: 1 / -1;
+    grid-column: 1;
+    position: relative;
+    display: block;
+    width: auto;
+    height: auto;
+    /* Both tiles are absolutely positioned, so the stage has no content
+       height of its own; it has to stretch across the rows it spans rather
+       than centring (the base rule) as a zero-height box. */
+    align-self: stretch;
+    justify-self: stretch;
+    border: none;
+  }
+
+  .video-tile.remote {
+    position: absolute;
+    inset: 0;
+  }
+
+  .video-tile + .video-tile {
+    border-top: none;
+  }
+
+  /* The layout already says who is who; labels only cost space here. */
+  .video-label {
+    display: none;
+  }
+
+  /* Browser picture-in-picture moves top-left, clear of the self-view's
+     default corner. */
+  .tile-btn-corner {
+    top: 12px;
+    right: auto;
+    left: 12px;
+  }
+
+  /* Self-view: a floating card positioned only by transform from client.js,
+     so dragging and springing never touch layout. Its aspect ratio follows
+     your camera, so the preview is never cropped or letterboxed. */
+  .video-tile.local {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    width: clamp(84px, 26vw, 128px);
+    aspect-ratio: var(--pip-ar, 3 / 4);
+    border-radius: var(--radius);
+    border: 1px solid rgb(255 255 255 / 0.14);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+    will-change: transform;
+    transition: opacity 0.2s ease-out, box-shadow 0.2s ease-out;
+  }
+
+  /* Picked up: a deeper shadow, the card lifting off the video. */
+  .video-tile.local.dragging {
+    cursor: grabbing;
+    box-shadow: 0 14px 36px rgb(0 0 0 / 0.55);
+  }
+
+  /* Before Start there is no camera, so no empty card either. */
+  .video-tile.local:not(:has(video.active)) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* The section dissolves so its log, typing line and form become grid items
+     of main and can be interleaved with the controls. */
+  .chat {
+    display: contents;
+  }
+
+  .chat-log {
+    grid-area: log;
+    align-self: end;
+    z-index: 1;
+    max-height: min(34dvh, 260px);
+    padding: 12px 12px 8px;
+    gap: 6px;
+    /* Older messages dissolve into the video instead of hitting a hard edge. */
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28px);
+    mask-image: linear-gradient(to bottom, transparent, #000 28px);
+  }
+
+  .chat-msg {
+    align-self: flex-start;
+    max-width: 85%;
+    padding: 5px 10px;
+    border-radius: var(--radius);
+    background: var(--material-chip);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    line-height: 1.4;
+  }
+
+  .chat-msg[data-from='system'] {
+    color: var(--text-muted-on-material);
+  }
+
+  .typing-indicator {
+    grid-area: typing;
+    justify-self: start;
+    z-index: 1;
+    height: auto;
+    margin: 0 12px 8px;
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    background: var(--material-chip);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    color: var(--text-muted-on-material);
+  }
+
+  .controls,
+  .chat-form {
+    z-index: 1;
+    background: var(--material-bar);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+  }
+
+  .controls {
+    grid-area: controls;
+    padding: 10px 12px 6px;
+    /* A faint bright top edge: light catching the material. */
+    border-top: 1px solid rgb(255 255 255 / 0.08);
+  }
+
+  .chat-form {
+    grid-area: form;
+    padding: 6px 12px 12px;
+    border-top: none;
+  }
+
+  .btn-ghost,
+  .chat-input::placeholder {
+    color: var(--text-muted-on-material);
+  }
+}
+
+/* Translucency off: the same surfaces, near-solid and unblurred. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --material-chip: rgb(10 10 11 / 0.96);
+    --material-bar: rgb(10 10 11 / 0.98);
+  }
+
+  .chat-msg,
+  .typing-indicator,
+  .controls,
+  .chat-form {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --material-chip: #0a0a0b;
+    --material-bar: #0a0a0b;
   }
 }
 

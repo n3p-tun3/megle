@@ -12,19 +12,24 @@ const FALLBACK_ICE_SERVERS = [
 // Unconstrained `video: true` often yields 640x480 (4:3), which pillarboxes
 // badly in the wide stage tiles. These are "ideal", not "exact", so a camera
 // that cannot do 720p still works and just returns its closest match.
-const MEDIA_CONSTRAINTS = {
-  video: {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-    aspectRatio: { ideal: 16 / 9 },
-    facingMode: 'user',
-  },
-  audio: {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-  },
-};
+// A phone held upright asks for portrait instead, so the stranger's
+// full-height mobile screen is filled rather than letterboxed.
+function mediaConstraints() {
+  const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)').matches;
+  return {
+    video: {
+      width: { ideal: portrait ? 720 : 1280 },
+      height: { ideal: portrait ? 1280 : 720 },
+      aspectRatio: { ideal: portrait ? 9 / 16 : 16 / 9 },
+      facingMode: 'user',
+    },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  };
+}
 
 async function getIceServers() {
   try {
@@ -45,6 +50,8 @@ const statusTextEl = document.getElementById('status-text');
 const onlineEl = document.getElementById('online-count');
 const sessionEmailEl = document.getElementById('session-email');
 const stageEl = document.querySelector('.stage');
+const localTile = document.getElementById('local-tile');
+const controlsEl = document.querySelector('.controls');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 const startBtn = document.getElementById('start-btn');
@@ -169,6 +176,280 @@ function flashStage() {
   void stageEl.offsetWidth; // restart the animation if it's already mid-flash
   stageEl.classList.add('flash');
 }
+
+// ---------- video fit ----------
+
+// Fill a video's box (cover) only when the feed's shape is close enough that
+// filling it crops almost nothing; otherwise show the whole frame (contain).
+// A portrait phone feed fills a portrait phone screen, while a landscape
+// laptop feed is shown whole and letterboxed, the way FaceTime handles it.
+const MAX_FILL_CROP = 0.2;
+
+function fitVideo(video) {
+  const { videoWidth: vw, videoHeight: vh } = video;
+  const box = video.getBoundingClientRect();
+  if (!vw || !vh || !box.width || !box.height) return;
+  const feed = vw / vh;
+  const frame = box.width / box.height;
+  const crop = 1 - Math.min(feed, frame) / Math.max(feed, frame);
+  video.style.objectFit = crop <= MAX_FILL_CROP ? 'cover' : 'contain';
+}
+
+// The mobile self-view card takes your camera's shape, so it's never cropped.
+function syncLocalAspect() {
+  const { videoWidth: vw, videoHeight: vh } = localVideo;
+  if (vw && vh) localTile.style.setProperty('--pip-ar', `${vw} / ${vh}`);
+}
+
+for (const video of [localVideo, remoteVideo]) {
+  // `resize` fires when the incoming frame size changes mid-call, e.g. the
+  // stranger rotating their phone.
+  for (const type of ['loadedmetadata', 'resize']) {
+    video.addEventListener(type, () => {
+      if (video === localVideo) {
+        syncLocalAspect();
+        // The card just changed height; re-seat it now rather than waiting
+        // on the next ResizeObserver tick.
+        syncPipLayout();
+      }
+      fitVideo(video);
+    });
+  }
+}
+
+// ---------- self-view card (mobile) ----------
+
+// Must match the mobile layout query in style.css.
+const mobileLayout = matchMedia(
+  '(max-width: 899.98px) and (orientation: portrait), (max-width: 899.98px) and (min-height: 561px)'
+);
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+const PIP_MARGIN = 12;
+// Apple's values for repositioning a PiP: critically damped (ratio 1.0, so no
+// overshoot) with a 0.4s response. With unit mass, k = (2π / response)² and
+// c = 2√k.
+const PIP_STIFFNESS = ((2 * Math.PI) / 0.4) ** 2;
+const PIP_DAMPING = 2 * Math.sqrt(PIP_STIFFNESS);
+// Scroll-like deceleration, used to project where a flick would come to rest.
+const PIP_DECELERATION = 0.998;
+const PIP_CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+
+const pip = {
+  x: 0,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  corner: 'top-right',
+  target: { x: 0, y: 0 },
+  raf: 0,
+  lastFrame: 0,
+  pointerId: null,
+  grabX: 0,
+  grabY: 0,
+  startX: 0,
+  startY: 0,
+  startTime: 0,
+  history: [],
+};
+
+function pipBounds() {
+  const stage = stageEl.getBoundingClientRect();
+  const w = localTile.offsetWidth;
+  const h = localTile.offsetHeight;
+  // Bottom corners sit above the overlaid controls and input, not under them.
+  const chromeTop = controlsEl.getBoundingClientRect().top - stage.top;
+  return {
+    minX: PIP_MARGIN,
+    maxX: Math.max(PIP_MARGIN, stage.width - w - PIP_MARGIN),
+    minY: PIP_MARGIN,
+    maxY: Math.max(PIP_MARGIN, chromeTop - h - PIP_MARGIN),
+  };
+}
+
+function cornerPoint(corner, bounds = pipBounds()) {
+  return {
+    x: corner.endsWith('left') ? bounds.minX : bounds.maxX,
+    y: corner.startsWith('top') ? bounds.minY : bounds.maxY,
+  };
+}
+
+function renderPip() {
+  localTile.style.transform = `translate3d(${pip.x}px, ${pip.y}px, 0)`;
+}
+
+function stopPipSpring() {
+  cancelAnimationFrame(pip.raf);
+  pip.raf = 0;
+}
+
+function placePip(corner) {
+  stopPipSpring();
+  pip.corner = corner;
+  const point = cornerPoint(corner);
+  pip.x = point.x;
+  pip.y = point.y;
+  pip.vx = 0;
+  pip.vy = 0;
+  renderPip();
+}
+
+// Independent X and Y springs, so a diagonal flick can't desync the axes.
+function stepPip(now) {
+  let dt = Math.min((now - pip.lastFrame) / 1000, 1 / 30);
+  pip.lastFrame = now;
+  // Sub-step, so a dropped frame can't destabilise the integration.
+  while (dt > 0) {
+    const h = Math.min(dt, 1 / 240);
+    const ax = -PIP_STIFFNESS * (pip.x - pip.target.x) - PIP_DAMPING * pip.vx;
+    const ay = -PIP_STIFFNESS * (pip.y - pip.target.y) - PIP_DAMPING * pip.vy;
+    pip.vx += ax * h;
+    pip.vy += ay * h;
+    pip.x += pip.vx * h;
+    pip.y += pip.vy * h;
+    dt -= h;
+  }
+
+  const settled =
+    Math.abs(pip.x - pip.target.x) < 0.5 &&
+    Math.abs(pip.y - pip.target.y) < 0.5 &&
+    Math.hypot(pip.vx, pip.vy) < 20;
+  if (settled) {
+    placePip(pip.corner);
+    return;
+  }
+  renderPip();
+  pip.raf = requestAnimationFrame(stepPip);
+}
+
+// Spring to a corner from the card's live position, keeping whatever velocity
+// it already has, whether that came from the finger or a flight in progress.
+function springPipTo(corner) {
+  pip.corner = corner;
+  pip.target = cornerPoint(corner);
+  if (reducedMotion.matches) {
+    placePip(corner);
+    return;
+  }
+  if (!pip.raf) {
+    pip.lastFrame = performance.now();
+    pip.raf = requestAnimationFrame(stepPip);
+  }
+}
+
+// Where a flick at this velocity (px/s) would come to rest.
+function project(velocity) {
+  return ((velocity / 1000) * PIP_DECELERATION) / (1 - PIP_DECELERATION);
+}
+
+function nearestCorner(x, y) {
+  const bounds = pipBounds();
+  let best = pip.corner;
+  let bestDistance = Infinity;
+  for (const corner of PIP_CORNERS) {
+    const point = cornerPoint(corner, bounds);
+    const distance = Math.hypot(point.x - x, point.y - y);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = corner;
+    }
+  }
+  return best;
+}
+
+// Past an edge the card still follows the finger, with growing resistance.
+function rubberband(value, min, max, dimension) {
+  const band = (overshoot) => (overshoot * dimension * 0.55) / (dimension + 0.55 * overshoot);
+  if (value < min) return min - band(min - value);
+  if (value > max) return max + band(value - max);
+  return value;
+}
+
+localTile.addEventListener('pointerdown', (event) => {
+  if (!mobileLayout.matches || pip.pointerId !== null) return;
+  // Catch it mid-flight: pip.x/y are the live on-screen position, so stopping
+  // the spring here causes no jump.
+  stopPipSpring();
+  pip.pointerId = event.pointerId;
+  localTile.setPointerCapture(event.pointerId);
+  const stage = stageEl.getBoundingClientRect();
+  // Keep the offset from where it was grabbed instead of centring on the finger.
+  pip.grabX = event.clientX - stage.left - pip.x;
+  pip.grabY = event.clientY - stage.top - pip.y;
+  pip.startX = event.clientX;
+  pip.startY = event.clientY;
+  pip.startTime = event.timeStamp;
+  pip.history = [{ t: event.timeStamp, x: pip.x, y: pip.y }];
+  localTile.classList.add('dragging');
+});
+
+localTile.addEventListener('pointermove', (event) => {
+  if (event.pointerId !== pip.pointerId) return;
+  const stage = stageEl.getBoundingClientRect();
+  const bounds = pipBounds();
+  pip.x = rubberband(event.clientX - stage.left - pip.grabX, bounds.minX, bounds.maxX, stage.width);
+  pip.y = rubberband(event.clientY - stage.top - pip.grabY, bounds.minY, bounds.maxY, stage.height);
+  renderPip();
+  pip.history.push({ t: event.timeStamp, x: pip.x, y: pip.y });
+  // Only the last ~100ms matter for the release velocity.
+  while (pip.history.length > 2 && event.timeStamp - pip.history[0].t > 100) {
+    pip.history.shift();
+  }
+});
+
+function releasePip(event) {
+  if (event.pointerId !== pip.pointerId) return;
+  pip.pointerId = null;
+  localTile.classList.remove('dragging');
+
+  // A tap sends the card to the other side, so it can be moved without
+  // dragging at all.
+  const moved = Math.hypot(event.clientX - pip.startX, event.clientY - pip.startY);
+  if (event.type === 'pointerup' && moved < 8 && event.timeStamp - pip.startTime < 300) {
+    pip.vx = 0;
+    pip.vy = 0;
+    const [vertical, horizontal] = pip.corner.split('-');
+    springPipTo(`${vertical}-${horizontal === 'left' ? 'right' : 'left'}`);
+    return;
+  }
+
+  const first = pip.history[0];
+  const last = pip.history[pip.history.length - 1];
+  const span = (last.t - first.t) / 1000;
+  // A finger that stopped before lifting shouldn't fling the card.
+  const moving = span > 0 && event.timeStamp - last.t < 60;
+  pip.vx = moving ? (last.x - first.x) / span : 0;
+  pip.vy = moving ? (last.y - first.y) / span : 0;
+
+  // Land where the gesture was heading, not where it was let go, and hand
+  // the finger's velocity to the spring so there's no seam at release.
+  springPipTo(nearestCorner(pip.x + project(pip.vx), pip.y + project(pip.vy)));
+}
+
+localTile.addEventListener('pointerup', releasePip);
+localTile.addEventListener('pointercancel', releasePip);
+
+function syncPipLayout() {
+  if (!mobileLayout.matches) {
+    stopPipSpring();
+    localTile.style.transform = '';
+    return;
+  }
+  if (pip.pointerId === null) placePip(pip.corner);
+}
+
+// The stage resizes on rotation and when the keyboard opens; the card resizes
+// once the camera's aspect ratio is known. Either way, re-seat the card in
+// its corner and re-decide how each feed should fit.
+const layoutObserver = new ResizeObserver(() => {
+  fitVideo(localVideo);
+  fitVideo(remoteVideo);
+  syncPipLayout();
+});
+layoutObserver.observe(stageEl);
+layoutObserver.observe(localTile);
+mobileLayout.addEventListener('change', syncPipLayout);
+syncPipLayout();
 
 // Mic/camera toggles: not shipping yet, revisiting alongside the admin
 // board. Kept commented rather than deleted since it's fully working code —
@@ -334,7 +615,7 @@ async function start() {
   iceServers = await getIceServers();
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
+    localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints());
   } catch (err) {
     setStatus(`Camera or microphone access failed: ${err.message}`, 'error');
     startBtn.disabled = false;
