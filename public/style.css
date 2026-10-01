@@ -50,6 +50,8 @@
   --material-chip: rgb(11 11 10 / 0.8);
   --material-bar: rgb(11 11 10 / 0.85);
   --text-muted-on-material: #abada4;
+  /* A faint bright top edge: light catching the material. */
+  --material-edge: rgb(255 255 255 / 0.08);
 
   /* Panel edges are solid so they hold up on bright screens; the rest are
      derived from --ink and follow the theme. */
@@ -94,7 +96,13 @@
   --border: #c2c5b8;
   --border-control: #878a7f;
   --shadow-panel: 0 1px 2px rgb(25 30 10 / 0.05), 0 4px 14px rgb(25 30 10 / 0.06);
-  }
+  /* Frosted white over video. Opacity is the minimum that keeps every text
+     pair at 4.5:1 even when the frame underneath is pure black. */
+  --material-chip: rgb(255 255 255 / 0.88);
+  --material-bar: rgb(255 255 255 / 0.9);
+  --material-edge: rgb(25 30 10 / 0.08);
+  --text-muted-on-material: #4a4d44;
+}
 
 * {
   box-sizing: border-box;
@@ -796,18 +804,8 @@ video.active {
    phone has no vertical room for a stacked stage plus chat, but plenty of
    width to put them side by side. */
 @media (min-width: 900px), (orientation: landscape) and (max-height: 560px) {
-  header {
-    height: 48px;
-    padding: 0 16px;
-  }
-
-  /* Stage and controls stack in the left column; chat sits beside them and
-     runs the full height. The stage row takes all the leftover space.
-     The video column is sized to the height the stage will actually get, so
-     two stacked 16:9 feeds fill it edge to edge instead of sitting in a wide
-     box with dead black either side. Everything left over goes to chat, and
-     the pair is centred rather than stretched. */
-  main.app {
+  /* The layout sizes live on body so the header can line up with them. */
+  body {
     /* Capped in px on desktop, but proportional so a landscape phone does
        not hand almost half its width to the chat. */
     --chat-w: min(420px, 38vw);
@@ -823,7 +821,23 @@ video.active {
       calc(100vw - var(--chrome-h)),
       calc((100dvh - var(--chrome-v)) * 8 / 9)
     );
+  }
 
+  /* Header content spans exactly the stage-plus-chat width, so the brand
+     sits over the stage's left edge and the account button over the chat's
+     right edge, instead of out at the window corners. */
+  header {
+    height: 48px;
+    padding: 0 max(16px, calc((100vw - var(--stage-w) - var(--chat-w) - 10px) / 2));
+  }
+
+  /* Stage and controls stack in the left column; chat sits beside them and
+     runs the full height. The stage row takes all the leftover space.
+     The video column is sized to the height the stage will actually get, so
+     two stacked 16:9 feeds fill it edge to edge instead of sitting in a wide
+     box with dead black either side. Everything left over goes to chat, and
+     the pair is centred rather than stretched. */
+  main.app {
     display: grid;
     grid-template-columns: var(--stage-w) var(--chat-w);
     grid-template-rows: minmax(0, 1fr) auto;
@@ -949,13 +963,14 @@ video.active {
     pointer-events: none;
   }
 
-  /* Chat and controls sit on the video, so they take the palette's dark
-     values whatever the page theme. Derived tokens are redeclared because
-     custom properties inherit already resolved against the root's --ink. */
-  .chat-log,
-  .typing-indicator,
-  .controls,
-  .chat-form {
+  /* Chat and controls sit on the video as material: dark material in the
+     dark theme, frosted white in the light one. Derived tokens are
+     redeclared because custom properties inherit already resolved against
+     the root's --ink. */
+  :root:not([data-theme='light']) .chat-log,
+  :root:not([data-theme='light']) .typing-indicator,
+  :root:not([data-theme='light']) .controls,
+  :root:not([data-theme='light']) .chat-form {
     --ink: 255 255 255;
     --text: var(--dk-text);
     --text-muted: var(--dk-muted);
@@ -975,6 +990,18 @@ video.active {
     --scrollbar: rgb(var(--ink) / 0.16);
     --scrollbar-hover: rgb(var(--ink) / 0.26);
     color: var(--text);
+  }
+
+  /* On frosted white the muted and label colors step darker, since black
+     video can show through the material. */
+  :root[data-theme='light'] .chat-log,
+  :root[data-theme='light'] .typing-indicator,
+  :root[data-theme='light'] .controls,
+  :root[data-theme='light'] .chat-form {
+    --text-muted: #4a4d44;
+    --text-placeholder: #5f625a;
+    --accent-text: #3d6006;
+    --stranger-text: #035e90;
   }
 
   /* The section dissolves so its log, typing line and form become grid items
@@ -1035,8 +1062,7 @@ video.active {
   .controls {
     grid-area: controls;
     padding: 10px 12px 6px;
-    /* A faint bright top edge: light catching the material. */
-    border-top: 1px solid rgb(255 255 255 / 0.08);
+    border-top: 1px solid var(--material-edge);
   }
 
   .chat-form {
@@ -1082,7 +1108,7 @@ video.active {
     background: var(--material-chip);
     -webkit-backdrop-filter: blur(16px) saturate(160%);
     backdrop-filter: blur(16px) saturate(160%);
-    color: var(--dk-text);
+    color: var(--text);
   }
 
   body[data-call] .account-btn {
@@ -1104,6 +1130,11 @@ video.active {
     --material-bar: rgb(11 11 10 / 0.98);
   }
 
+  :root[data-theme='light'] {
+    --material-chip: rgb(255 255 255 / 0.97);
+    --material-bar: rgb(255 255 255 / 0.98);
+  }
+
   .chat-msg,
   .typing-indicator,
   .controls,
@@ -1118,6 +1149,11 @@ video.active {
   :root {
     --material-chip: #0b0b0a;
     --material-bar: #0b0b0a;
+  }
+
+  :root[data-theme='light'] {
+    --material-chip: #ffffff;
+    --material-bar: #ffffff;
   }
 }
 
