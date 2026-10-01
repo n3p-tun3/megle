@@ -14,7 +14,7 @@ const MIME = {
 };
 
 // Pages that never require a session. Everything else behind the auth gate.
-const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css', '/theme.js']);
+const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css', '/theme.js', '/landing.js']);
 
 // email -> timestamp of last magic link, to stop someone hammering the mail API.
 const lastLinkSentAt = new Map();
@@ -179,12 +179,23 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/auth/logout') {
     const cookie = `${auth.SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
-    res.writeHead(302, { 'Set-Cookie': cookie, Location: '/login' });
+    res.writeHead(302, { 'Set-Cookie': cookie, Location: '/' });
     return res.end();
   }
 
   if (pathname === '/login') {
     return serveStatic(res, '/login.html');
+  }
+
+  // The landing page, reachable when signed in too (the rules live there).
+  if (pathname === '/about') {
+    return serveStatic(res, '/landing.html');
+  }
+
+  // Public on purpose: the landing page shows it as social proof. It's a
+  // single number, so it reveals nothing about who is on.
+  if (pathname === '/api/online') {
+    return sendJson(res, 200, { count: online.size });
   }
 
   if (PUBLIC_PATHS.has(pathname)) {
@@ -194,7 +205,9 @@ const server = http.createServer(async (req, res) => {
   // Everything below requires a valid session.
   const session = auth.sessionFromRequest(req);
   if (!session) {
-    if (pathname === '/' || pathname.endsWith('.html')) {
+    // Visitors who aren't signed in meet the landing page first.
+    if (pathname === '/') return serveStatic(res, '/landing.html');
+    if (pathname.endsWith('.html')) {
       res.writeHead(302, { Location: '/login' });
       return res.end();
     }
