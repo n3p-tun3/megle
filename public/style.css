@@ -1162,35 +1162,6 @@ video.active {
 
 /* ---------- login ---------- */
 
-main.centered {
-  flex: 1;
-  min-height: 0;
-  justify-content: center;
-}
-
-.panel {
-  width: 100%;
-  max-width: 360px;
-  padding: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-panel);
-}
-
-.panel-title {
-  margin: 0 0 6px;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.panel-body {
-  margin: 0 0 18px;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
 .form {
   display: flex;
   flex-direction: column;
@@ -1247,6 +1218,111 @@ main.centered {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* The sign-in form, tuned in on the static screen as a theme-colored card. */
+.auth-card {
+  position: relative;
+  width: min(100% - 32px, 380px);
+  padding: 28px 24px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.35);
+  color: var(--text);
+}
+
+.auth-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.auth-title:focus {
+  outline: none;
+}
+
+.auth-body {
+  margin: 4px 0 14px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-body strong {
+  color: var(--text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.auth-tip {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--fill-icon-hover);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.auth-tip strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sent-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.sent-icon .icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Input with the school domain shown after it: the frame is the field, so
+   focus rings the whole thing and clicking the suffix still types. */
+.field-affix {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--fill-subtle);
+  cursor: text;
+}
+
+.field-affix:focus-within {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
+}
+
+.field-affix .field-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+}
+
+.field-affix .field-input:focus-visible {
+  outline: none;
+}
+
+.field-suffix {
+  flex: none;
+  padding-right: 12px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  white-space: nowrap;
 }
 
 /* ---------- small screens ---------- */
@@ -1359,6 +1435,7 @@ main.landing {
   flex: 1;
   min-height: 260px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   overflow: hidden;
   border-radius: var(--radius);
@@ -1367,7 +1444,16 @@ main.landing {
   box-shadow: var(--shadow-panel);
 }
 
+/* Clipped in its own layer, so the oversized static never counts as
+   scrollable overflow of the screen. */
 .screen-static {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.screen-static::before {
+  content: '';
   position: absolute;
   inset: -128px;
   background-image: var(--static);
@@ -1514,7 +1600,7 @@ main.landing {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen-static {
+  .screen-static::before {
     animation: none;
   }
 }
@@ -1573,4 +1659,29 @@ main.doc {
   margin-bottom: 2px;
   color: var(--text);
   font-weight: 600;
+}
+
+/* Short phones: the sign-in card tightens up rather than overflowing the
+   screen, and if it still can't fit, the screen scrolls inside itself
+   instead of the page. */
+@media (max-height: 680px) {
+  .auth-card {
+    padding: 20px 18px 18px;
+  }
+
+  .sent-icon {
+    display: none;
+  }
+
+  .auth-tip {
+    padding: 8px 10px;
+  }
+}
+
+.screen:has(.auth-card) {
+  overflow: hidden auto;
+  padding: 16px 0;
+  /* safe: if the card is taller than the screen, start it at the top
+     rather than centering it off both edges. */
+  align-items: safe center;
 }

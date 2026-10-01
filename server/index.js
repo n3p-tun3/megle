@@ -14,7 +14,7 @@ const MIME = {
 };
 
 // Pages that never require a session. Everything else behind the auth gate.
-const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css', '/theme.js', '/landing.js']);
+const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css', '/theme.js', '/landing.js', '/screen-static.js']);
 
 // email -> timestamp of last magic link, to stop someone hammering the mail API.
 const lastLinkSentAt = new Map();
@@ -184,6 +184,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/login') {
+    // Already signed in: nothing to do here.
+    if (auth.sessionFromRequest(req)) {
+      res.writeHead(302, { Location: '/' });
+      return res.end();
+    }
     return serveStatic(res, '/login.html');
   }
 
