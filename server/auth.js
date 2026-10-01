@@ -132,7 +132,7 @@ async function deliverLoginLink(email, link) {
       <p>Click below to sign in to meetastu.</p>
       <p style="margin:24px 0">
         <a href="${link}"
-           style="background:#36d4e2;color:#0a0a0b;padding:11px 20px;border-radius:8px;
+           style="background:#c5f23a;color:#0b0b0a;padding:11px 20px;border-radius:8px;
                   text-decoration:none;display:inline-block;font-weight:600">Sign in to meetastu</a>
       </p>
       <p style="color:#52525b;font-size:13px">

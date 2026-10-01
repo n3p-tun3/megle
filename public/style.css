@@ -1,39 +1,101 @@
 :root {
-  --bg: #0a0a0b;
-  --surface: #101013;
-  --border: rgb(255 255 255 / 0.09);
-  --border-strong: rgb(255 255 255 / 0.17);
-  --text: #ededf0;
-  --text-muted: #9a9aa2;
-  --text-placeholder: #85858d;
-  /* Teal-leaning mint (H185), not pure green: a 43deg hue gap from
-     --dot-connected (H142) so the "You" chat label and the connected-status
-     dot/"Stranger" label stay visually distinct rather than reading as the
-     same color. Computed to pass 4.5:1 as text on --bg either way. */
-  --accent: #36d4e2;
-  --accent-hover: #55dbe7;
-  --accent-active: #1dbfcd;
-  /* Text/icon color for content sitting on top of an accent-filled surface.
-     Mint is high-luminance, so dark text reads far better than white here
-     (11:1 vs 1.8:1) — the opposite pairing from the old blue. */
-  --on-accent: #0a0a0b;
+  color-scheme: dark;
+  /* Foreground channel for hairlines, washes and scrollbars: a warm white on
+     dark, a green-black on light, so one value flips all of them. */
+  --ink: 245 250 235;
+  /* Graphite: neutral with a faint yellow-green cast that sits under lime. */
+  --bg: #0b0b0a;
+  --surface: #131412;
+  --text: #ecede7;
+  --text-muted: #9c9e95;
+  --text-placeholder: #86887f;
+  /* Electric lime. High luminance, so content on it is near-black. */
+  --accent: #c5f23a;
+  --accent-hover: #d3f765;
+  --accent-active: #b2df22;
+  --on-accent: #0b0b0a;
+  /* Accent and status hues used as text, which light themes need darker
+     than the fills. "Stranger" is sky rather than green so it never reads
+     as the same color as the lime "You". */
+  --accent-text: #d3f765;
+  --stranger-text: #7dd3fc;
+  --error-text: #f87171;
   --dot-idle: #52525b;
   --dot-searching: #eab308;
   --dot-connected: #22c55e;
   --dot-error: #ef4444;
+  /* Panels lie flat on dark; light themes lift them with a soft shadow. */
+  --shadow-panel: none;
+
+  /* Dark-theme values of the palette, for chrome that floats over live video:
+     video is dark whatever the page theme, so that chrome always is too. */
+  --dk-text: #ecede7;
+  --dk-muted: #9c9e95;
+  --dk-placeholder: #86887f;
+  --dk-accent: #c5f23a;
+  --dk-accent-hover: #d3f765;
+  --dk-accent-active: #b2df22;
+  --dk-on-accent: #0b0b0a;
+  --dk-accent-text: #d3f765;
+  --dk-stranger: #7dd3fc;
+
+  /* Light text and washes on the video itself (labels, empty-tile copy). */
+  --on-video: #ecede7;
+  --on-video-muted: #9c9e95;
 
   /* Dark translucent material for chrome floating over live video (mobile).
      Each opacity is the minimum that keeps every text pair on it at 4.5:1 or
      better even when the frame underneath is pure white. The larger bars are
      thicker than the small chips, so they read as heavier surfaces. */
-  --material-chip: rgb(10 10 11 / 0.8);
-  --material-bar: rgb(10 10 11 / 0.85);
-  --text-muted-on-material: #aaaab2;
+  --material-chip: rgb(11 11 10 / 0.8);
+  --material-bar: rgb(11 11 10 / 0.85);
+  --text-muted-on-material: #abada4;
+
+  /* Panel edges are solid so they hold up on bright screens; the rest are
+     derived from --ink and follow the theme. */
+  --border: #262824;
+  --border-strong: rgb(var(--ink) / 0.17);
+  --border-hover: rgb(var(--ink) / 0.3);
+  /* Edges of inputs and outlined buttons: 3:1 against the panel, since the
+     edge is what tells you the control is there. */
+  --border-control: #64675f;
+  --fill-subtle: rgb(var(--ink) / 0.04);
+  --fill-hover: rgb(var(--ink) / 0.05);
+  --fill-icon-hover: rgb(var(--ink) / 0.07);
+  --scrollbar: rgb(var(--ink) / 0.16);
+  --scrollbar-hover: rgb(var(--ink) / 0.26);
 
   /* One radius scale: 6px on every panel and control. The video stage is the
      single exception at 0, since it reads as a screen rather than a card. */
   --radius: 6px;
   --control-h: 36px;
+}
+
+/* Light theme: follows the system unless a page sets data-theme. The page is
+   a visibly darker stone than the white panels, which also carry a solid
+   edge and a soft shadow, so white never sits flat on near-white. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --ink: 25 30 10;
+    --bg: #e1e2d9;
+    --surface: #ffffff;
+    --text: #1a1b16;
+    --text-muted: #55584e;
+    --text-placeholder: #666960;
+    /* Lime fills keep their near-black label; as text, lime drops to a deep
+       olive to reach 4.5:1 on white. */
+    --accent: #b6e62a;
+    --accent-hover: #a6d61c;
+    --accent-active: #94c312;
+    --on-accent: #141a02;
+    --accent-text: #4a7409;
+    --stranger-text: #0369a1;
+    --error-text: #dc2626;
+    --border: #c2c5b8;
+    --border-control: #878a7f;
+    --shadow-panel: 0 1px 2px rgb(25 30 10 / 0.05), 0 4px 14px rgb(25 30 10 / 0.06);
+  }
 }
 
 * {
@@ -172,7 +234,7 @@ header h1 {
 }
 
 .icon-btn:hover {
-  background: rgb(255 255 255 / 0.07);
+  background: var(--fill-icon-hover);
   color: var(--text);
 }
 
@@ -286,7 +348,7 @@ video.active {
   padding: 2px 7px;
   border-radius: 3px;
   background: rgb(0 0 0 / 0.55);
-  color: var(--text);
+  color: var(--on-video);
   font-size: 0.7rem;
   letter-spacing: 0.02em;
 }
@@ -318,7 +380,7 @@ video.active {
   margin: 0;
   padding: 0 24px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--on-video-muted);
   font-size: 0.9rem;
 }
 
@@ -380,7 +442,7 @@ video.active {
   padding: 4px 10px;
   border-radius: var(--radius);
   background: rgb(0 0 0 / 0.55);
-  color: var(--text-muted);
+  color: var(--on-video-muted);
   font-size: 0.78rem;
 }
 
@@ -404,7 +466,7 @@ video.active {
   border: 1px solid rgb(255 255 255 / 0.16);
   border-radius: var(--radius);
   background: rgb(0 0 0 / 0.55);
-  color: var(--text);
+  color: var(--on-video);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
     transform 0.1s ease-out;
@@ -461,7 +523,7 @@ video.active {
 .btn:focus-visible,
 .tile-btn:focus-visible,
 .icon-btn:focus-visible {
-  outline: 2px solid var(--accent-hover);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -508,13 +570,13 @@ video.active {
 
 .btn-secondary {
   background: transparent;
-  border-color: var(--border-strong);
+  border-color: var(--border-control);
   color: var(--text);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  border-color: rgb(255 255 255 / 0.3);
-  background: rgb(255 255 255 / 0.05);
+  border-color: var(--text-muted);
+  background: var(--fill-hover);
 }
 
 /* Least prominent of the three: no fill, no border, muted until hovered. */
@@ -526,7 +588,7 @@ video.active {
 
 .btn-ghost:hover:not(:disabled) {
   color: var(--text);
-  background: rgb(255 255 255 / 0.05);
+  background: var(--fill-hover);
 }
 
 /* ---------- chat ---------- */
@@ -539,6 +601,7 @@ video.active {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-panel);
   overflow: hidden;
 }
 
@@ -553,7 +616,7 @@ video.active {
   font-size: 0.875rem;
   line-height: 1.5;
   scrollbar-width: thin;
-  scrollbar-color: rgb(255 255 255 / 0.16) transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 .chat-log::-webkit-scrollbar {
@@ -565,12 +628,12 @@ video.active {
 }
 
 .chat-log::-webkit-scrollbar-thumb {
-  background: rgb(255 255 255 / 0.16);
+  background: var(--scrollbar);
   border-radius: 999px;
 }
 
 .chat-log::-webkit-scrollbar-thumb:hover {
-  background: rgb(255 255 255 / 0.26);
+  background: var(--scrollbar-hover);
 }
 
 .chat-log p {
@@ -587,11 +650,11 @@ video.active {
 }
 
 .chat-msg[data-from='you'] .chat-msg-author {
-  color: var(--accent-hover);
+  color: var(--accent-text);
 }
 
 .chat-msg[data-from='stranger'] .chat-msg-author {
-  color: var(--dot-connected);
+  color: var(--stranger-text);
 }
 
 .chat-msg[data-from='system'] {
@@ -624,9 +687,9 @@ video.active {
   min-width: 0;
   height: var(--control-h);
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius);
-  background: rgb(255 255 255 / 0.04);
+  background: var(--fill-subtle);
   color: var(--text);
   font-family: inherit;
   font-size: 0.875rem;
@@ -637,7 +700,7 @@ video.active {
 }
 
 .chat-input:focus-visible {
-  outline: 2px solid var(--accent-hover);
+  outline: 2px solid var(--accent-text);
   outline-offset: 1px;
   border-color: var(--accent);
 }
@@ -806,6 +869,34 @@ video.active {
     pointer-events: none;
   }
 
+  /* Chat and controls sit on the video, so they take the palette's dark
+     values whatever the page theme. Derived tokens are redeclared because
+     custom properties inherit already resolved against the root's --ink. */
+  .chat-log,
+  .typing-indicator,
+  .controls,
+  .chat-form {
+    --ink: 255 255 255;
+    --text: var(--dk-text);
+    --text-muted: var(--dk-muted);
+    --text-placeholder: var(--dk-placeholder);
+    --accent: var(--dk-accent);
+    --accent-hover: var(--dk-accent-hover);
+    --accent-active: var(--dk-accent-active);
+    --on-accent: var(--dk-on-accent);
+    --accent-text: var(--dk-accent-text);
+    --stranger-text: var(--dk-stranger);
+    --border: #262824;
+    --border-strong: rgb(var(--ink) / 0.17);
+    --border-hover: rgb(var(--ink) / 0.3);
+    --border-control: #64675f;
+    --fill-subtle: rgb(var(--ink) / 0.04);
+    --fill-hover: rgb(var(--ink) / 0.05);
+    --scrollbar: rgb(var(--ink) / 0.16);
+    --scrollbar-hover: rgb(var(--ink) / 0.26);
+    color: var(--text);
+  }
+
   /* The section dissolves so its log, typing line and form become grid items
      of main and can be interleaved with the controls. */
   .chat {
@@ -883,8 +974,8 @@ video.active {
 /* Translucency off: the same surfaces, near-solid and unblurred. */
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --material-chip: rgb(10 10 11 / 0.96);
-    --material-bar: rgb(10 10 11 / 0.98);
+    --material-chip: rgb(11 11 10 / 0.96);
+    --material-bar: rgb(11 11 10 / 0.98);
   }
 
   .chat-msg,
@@ -898,8 +989,8 @@ video.active {
 
 @media (prefers-contrast: more) {
   :root {
-    --material-chip: #0a0a0b;
-    --material-bar: #0a0a0b;
+    --material-chip: #0b0b0a;
+    --material-bar: #0b0b0a;
   }
 }
 
@@ -918,6 +1009,7 @@ main.centered {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-panel);
 }
 
 .panel-title {
@@ -947,9 +1039,9 @@ main.centered {
 .field-input {
   height: 38px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius);
-  background: rgb(255 255 255 / 0.04);
+  background: var(--fill-subtle);
   color: var(--text);
   font-family: inherit;
   font-size: 0.9rem;
@@ -960,7 +1052,7 @@ main.centered {
 }
 
 .field-input:focus-visible {
-  outline: 2px solid var(--accent-hover);
+  outline: 2px solid var(--accent-text);
   outline-offset: 1px;
   border-color: var(--accent);
 }
@@ -969,7 +1061,7 @@ main.centered {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--dot-error);
+  color: var(--error-text);
 }
 
 .field-message:empty {
