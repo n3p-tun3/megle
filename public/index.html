@@ -7,26 +7,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
   <title>meetastu</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="theme.js"></script>
 </head>
 <body>
   <header>
     <div class="brand">
       <h1>meetastu</h1>
     </div>
+    <!-- Screen-reader status. Sighted users read state off the stage. -->
+    <div id="status" class="sr-only" data-state="idle" role="status" aria-live="polite">
+      <span id="status-text">Idle</span>
+    </div>
     <div class="header-right">
-      <div class="header-group">
-        <span id="online-count" class="online-count">0 online</span>
-        <div id="status" class="status" data-state="idle" role="status" aria-live="polite">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span id="status-text">Idle</span>
+      <span id="online-count" class="online-pill">
+        <span class="online-dot" aria-hidden="true"></span>
+        <span id="online-count-text">0 online</span>
+      </span>
+      <div class="account">
+        <button id="account-btn" class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" aria-label="Account and settings">
+          <span id="account-initial" aria-hidden="true">·</span>
+        </button>
+        <div id="account-menu" class="menu" role="menu" aria-label="Account and settings" hidden>
+          <p id="session-email" class="menu-email" role="presentation"></p>
+          <div class="menu-group" role="group" aria-label="Theme">
+            <span class="menu-label" aria-hidden="true">Theme</span>
+            <div class="segmented">
+              <button type="button" role="menuitemradio" data-theme-choice="system" aria-checked="true">System</button>
+              <button type="button" role="menuitemradio" data-theme-choice="light" aria-checked="false">Light</button>
+              <button type="button" role="menuitemradio" data-theme-choice="dark" aria-checked="false">Dark</button>
+            </div>
+          </div>
+          <a href="/auth/logout" class="menu-item" role="menuitem">
+            <svg class="icon" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H112a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z"/></svg>
+            Sign out
+          </a>
         </div>
-      </div>
-      <span class="header-divider" aria-hidden="true"></span>
-      <div class="session">
-        <span id="session-email"></span>
-        <a href="/auth/logout" class="icon-btn" aria-label="Sign out" title="Sign out">
-          <svg class="icon" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H112a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z"/></svg>
-        </a>
       </div>
     </div>
   </header>
@@ -57,6 +72,7 @@
           <p class="remote-empty-copy" data-for="idle">Press Start to meet someone</p>
           <p class="remote-empty-copy" data-for="searching">Looking for someone…</p>
           <p class="remote-empty-copy" data-for="connecting">Connecting…</p>
+          <p id="stage-error" class="remote-empty-copy" data-for="error"></p>
         </div>
         <span class="video-label">Stranger</span>
         <button id="pip-btn" class="tile-btn tile-btn-corner" type="button" hidden aria-label="Pop out into a floating window" title="Pop out into a floating window">

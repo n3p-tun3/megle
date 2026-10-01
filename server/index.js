@@ -14,7 +14,7 @@ const MIME = {
 };
 
 // Pages that never require a session. Everything else behind the auth gate.
-const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css']);
+const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css', '/theme.js']);
 
 // email -> timestamp of last magic link, to stop someone hammering the mail API.
 const lastLinkSentAt = new Map();

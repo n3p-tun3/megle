@@ -71,32 +71,30 @@
   --control-h: 36px;
 }
 
-/* Light theme: follows the system unless a page sets data-theme. The page is
+/* Light theme, set by theme.js from the saved choice or the system. The page is
    a visibly darker stone than the white panels, which also carry a solid
    edge and a soft shadow, so white never sits flat on near-white. */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) {
-    color-scheme: light;
-    --ink: 25 30 10;
-    --bg: #e1e2d9;
-    --surface: #ffffff;
-    --text: #1a1b16;
-    --text-muted: #55584e;
-    --text-placeholder: #666960;
-    /* Lime fills keep their near-black label; as text, lime drops to a deep
-       olive to reach 4.5:1 on white. */
-    --accent: #b6e62a;
-    --accent-hover: #a6d61c;
-    --accent-active: #94c312;
-    --on-accent: #141a02;
-    --accent-text: #4a7409;
-    --stranger-text: #0369a1;
-    --error-text: #dc2626;
-    --border: #c2c5b8;
-    --border-control: #878a7f;
-    --shadow-panel: 0 1px 2px rgb(25 30 10 / 0.05), 0 4px 14px rgb(25 30 10 / 0.06);
+:root[data-theme='light'] {
+  color-scheme: light;
+  --ink: 25 30 10;
+  --bg: #e1e2d9;
+  --surface: #ffffff;
+  --text: #1a1b16;
+  --text-muted: #55584e;
+  --text-placeholder: #666960;
+  /* Lime fills keep their near-black label; as text, lime drops to a deep
+     olive to reach 4.5:1 on white. */
+  --accent: #b6e62a;
+  --accent-hover: #a6d61c;
+  --accent-active: #94c312;
+  --on-accent: #141a02;
+  --accent-text: #4a7409;
+  --stranger-text: #0369a1;
+  --error-text: #dc2626;
+  --border: #c2c5b8;
+  --border-control: #878a7f;
+  --shadow-panel: 0 1px 2px rgb(25 30 10 / 0.05), 0 4px 14px rgb(25 30 10 / 0.06);
   }
-}
 
 * {
   box-sizing: border-box;
@@ -149,102 +147,184 @@ header h1 {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   font-size: 0.8rem;
   color: var(--text-muted);
 }
 
-.header-group {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.header-divider {
+.sr-only {
+  position: absolute;
   width: 1px;
-  height: 18px;
-  background: var(--border-strong);
-  flex: none;
-}
-
-.online-count {
-  font-variant-numeric: tabular-nums;
-}
-
-.status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--dot-idle);
-  transition: background-color 0.2s ease;
-}
-
-.status[data-state='searching'] .status-dot {
-  background: var(--dot-searching);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-.status[data-state='connected'] .status-dot {
-  background: var(--dot-connected);
-}
-
-.status[data-state='error'] .status-dot {
-  background: var(--dot-error);
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
-}
-
-.session {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#session-email {
-  max-width: 180px;
+  height: 1px;
+  margin: -1px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
-.icon-btn {
+/* Live presence. The dot is green because it means "people are here now",
+   the same meaning as the connected state. */
+.online-pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius);
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease-out;
+  gap: 7px;
+  height: 28px;
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.icon-btn:hover {
-  background: var(--fill-icon-hover);
-  color: var(--text);
+.online-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot-connected);
 }
 
-.icon-btn:active {
+/* ---------- account menu ---------- */
+
+.account {
+  position: relative;
+}
+
+.account-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease-out;
+}
+
+.account-btn:hover {
+  background: var(--accent-hover);
+}
+
+.account-btn:active {
   transform: scale(0.93);
 }
 
-.icon-btn .icon {
+.account-btn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+/* Scales in from the button it belongs to, so it reads as coming from there.
+   Short and ease-out: a menu is opened often and should never feel slow. */
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: 232px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+  color: var(--text);
+  font-size: 0.85rem;
+  transform-origin: top right;
+  animation: menu-in 0.14s ease-out;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.menu-email {
+  margin: 0;
+  padding: 6px 8px 8px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.menu-group {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.menu-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius);
+  background: var(--fill-icon-hover);
+}
+
+.segmented button {
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button[aria-checked='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.segmented button:focus-visible,
+.menu-item:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: -2px;
+}
+
+.menu-item {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.menu-item:hover {
+  background: var(--fill-icon-hover);
+}
+
+.menu-item .icon {
   width: 15px;
   height: 15px;
+  color: var(--text-muted);
 }
 
 /* ---------- app shell ---------- */
@@ -385,7 +465,7 @@ video.active {
 }
 
 .stage[data-state='idle'] .remote-empty-copy[data-for='idle'],
-.stage[data-state='error'] .remote-empty-copy[data-for='idle'],
+.stage[data-state='error'] .remote-empty-copy[data-for='error'],
 .stage[data-state='searching'] .remote-empty-copy[data-for='searching'],
 .stage[data-state='connected'] .remote-empty-copy[data-for='connecting'] {
   display: block;
@@ -969,6 +1049,52 @@ video.active {
   .chat-input::placeholder {
     color: var(--text-muted-on-material);
   }
+
+  /* In a call the header steps aside: it leaves the flow so the stranger
+     gets the whole screen, and only the online count and account button
+     stay, as chips over the video. Before Start and after Stop it's back. */
+  body[data-call] header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    height: auto;
+    padding: 12px;
+    justify-content: flex-start;
+    background: transparent;
+    border: none;
+    pointer-events: none;
+  }
+
+  body[data-call] .brand {
+    display: none;
+  }
+
+  body[data-call] .header-right > * {
+    pointer-events: auto;
+  }
+
+  body[data-call] .online-pill {
+    height: 32px;
+    padding: 0 10px;
+    border-radius: var(--radius);
+    background: var(--material-chip);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    color: var(--dk-text);
+  }
+
+  body[data-call] .account-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  body[data-call] .menu {
+    left: 0;
+    right: auto;
+    transform-origin: top left;
+  }
 }
 
 /* Translucency off: the same surfaces, near-solid and unblurred. */
@@ -981,7 +1107,8 @@ video.active {
   .chat-msg,
   .typing-indicator,
   .controls,
-  .chat-form {
+  .chat-form,
+  .online-pill {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
@@ -1094,12 +1221,6 @@ main.centered {
     gap: 12px;
   }
 
-  /* The address is recoverable from the sign-out flow; the status and the
-     online count matter more once the viewport is this tight. */
-  #session-email {
-    display: none;
-  }
-
   .controls {
     gap: 6px;
   }
@@ -1118,15 +1239,16 @@ main.centered {
    color transitions aid comprehension and stay, only genuine movement and
    looping motion (the searching pulse, the match flash, button press) go. */
 @media (prefers-reduced-motion: reduce) {
-  .status-dot,
   .stage,
+  .menu,
   .remote-empty::before {
     animation: none !important;
   }
 
   .btn:active,
   .tile-btn:active,
-  .icon-btn:active {
+  .icon-btn:active,
+  .account-btn:active {
     transform: none !important;
   }
 }

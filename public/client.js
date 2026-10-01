@@ -66,8 +66,13 @@ async function getIceServers() {
 
 const statusEl = document.getElementById('status');
 const statusTextEl = document.getElementById('status-text');
-const onlineEl = document.getElementById('online-count');
+const onlineEl = document.getElementById('online-count-text');
 const sessionEmailEl = document.getElementById('session-email');
+const accountInitialEl = document.getElementById('account-initial');
+const accountBtn = document.getElementById('account-btn');
+const accountMenu = document.getElementById('account-menu');
+const headerRight = document.querySelector('.header-right');
+const stageErrorEl = document.getElementById('stage-error');
 const stageEl = document.querySelector('.stage');
 const localTile = document.getElementById('local-tile');
 const controlsEl = document.querySelector('.controls');
@@ -114,6 +119,9 @@ const pipSupported =
 function setStatus(text, state = 'idle') {
   statusTextEl.textContent = text;
   statusEl.dataset.state = state;
+  // The header no longer shows status, so errors are spelled out on the
+  // stage where the user is already looking.
+  if (state === 'error') stageErrorEl.textContent = text;
   // Drives what the empty stranger tile shows: a prompt, or static.
   stageEl.dataset.state = state;
 }
@@ -305,10 +313,16 @@ function pipBounds() {
   const h = localTile.offsetHeight;
   // Bottom corners sit above the overlaid controls and input, not under them.
   const chromeTop = controlsEl.getBoundingClientRect().top - stage.top;
+  // In a call the header's chips float top-left, so that corner starts
+  // below them. The right side keeps the full height.
+  const chipsBottom = document.body.dataset.call
+    ? headerRight.getBoundingClientRect().bottom - stage.top + 8
+    : PIP_MARGIN;
   return {
     minX: PIP_MARGIN,
     maxX: Math.max(PIP_MARGIN, stage.width - w - PIP_MARGIN),
     minY: PIP_MARGIN,
+    minYLeft: Math.max(PIP_MARGIN, chipsBottom),
     maxY: Math.max(PIP_MARGIN, chromeTop - h - PIP_MARGIN),
   };
 }
@@ -316,7 +330,9 @@ function pipBounds() {
 function cornerPoint(corner, bounds = pipBounds()) {
   return {
     x: corner.endsWith('left') ? bounds.minX : bounds.maxX,
-    y: corner.startsWith('top') ? bounds.minY : bounds.maxY,
+    y: corner.startsWith('top')
+      ? corner.endsWith('left') ? bounds.minYLeft : bounds.minY
+      : bounds.maxY,
   };
 }
 
@@ -674,6 +690,9 @@ async function start() {
   localVideo.srcObject = localStream;
   localVideo.classList.add('active');
   // resetMediaToggles(); // mic/camera toggles not shipped yet
+  // On phones this tucks the header away for the length of the call.
+  document.body.dataset.call = 'on';
+  syncPipLayout();
 
   const settings = localStream.getVideoTracks()[0]?.getSettings();
   if (settings) {
@@ -780,6 +799,7 @@ function endCall() {
   localVideo.classList.remove('active');
   localVideo.srcObject = null;
   // resetMediaToggles(); // mic/camera toggles not shipped yet
+  delete document.body.dataset.call;
   setChatEnabled(false);
   clearChat();
   setStatus('Idle', 'idle');
@@ -855,8 +875,81 @@ window.addEventListener('pagehide', () => {
 fetch('/api/me')
   .then((res) => (res.ok ? res.json() : null))
   .then((me) => {
-    if (me) sessionEmailEl.textContent = me.email;
+    if (!me) return;
+    sessionEmailEl.textContent = me.email;
+    accountInitialEl.textContent = me.email.charAt(0);
   })
   .catch(() => {});
+
+// ---------- account menu ----------
+
+const themeChoices = [...accountMenu.querySelectorAll('[data-theme-choice]')];
+
+function menuItems() {
+  return [...accountMenu.querySelectorAll('[role^="menuitem"]')];
+}
+
+function syncThemeChoices() {
+  const current = window.meetastuTheme?.get() ?? 'system';
+  themeChoices.forEach((btn) => {
+    btn.setAttribute('aria-checked', String(btn.dataset.themeChoice === current));
+  });
+}
+
+function openMenu(focusFirst) {
+  syncThemeChoices();
+  accountMenu.hidden = false;
+  accountBtn.setAttribute('aria-expanded', 'true');
+  if (focusFirst) menuItems()[0]?.focus();
+}
+
+function closeMenu(returnFocus) {
+  if (accountMenu.hidden) return;
+  accountMenu.hidden = true;
+  accountBtn.setAttribute('aria-expanded', 'false');
+  if (returnFocus) accountBtn.focus();
+}
+
+accountBtn.addEventListener('click', (event) => {
+  // detail is 0 for keyboard activation: move focus in only then, so a
+  // mouse click doesn't paint a focus ring on the first item.
+  if (accountMenu.hidden) openMenu(event.detail === 0);
+  else closeMenu(false);
+});
+
+accountBtn.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    openMenu(true);
+  }
+});
+
+themeChoices.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    window.meetastuTheme?.set(btn.dataset.themeChoice);
+    syncThemeChoices();
+  });
+});
+
+accountMenu.addEventListener('keydown', (event) => {
+  const items = menuItems();
+  const i = items.indexOf(document.activeElement);
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeMenu(true);
+  } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    items[(i + 1) % items.length].focus();
+  } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+    event.preventDefault();
+    items[(i - 1 + items.length) % items.length].focus();
+  } else if (event.key === 'Tab') {
+    closeMenu(false);
+  }
+});
+
+document.addEventListener('pointerdown', (event) => {
+  if (!accountMenu.hidden && !event.target.closest('.account')) closeMenu(false);
+});
 
 connect();
