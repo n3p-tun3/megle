@@ -8,96 +8,41 @@
   <link rel="stylesheet" href="style.css" />
   <script src="theme.js"></script>
 </head>
-<body class="page">
+<body class="onepager">
   <header>
     <div class="brand">
-      <a href="/about" class="brand-link"><h1>meetastu</h1></a>
+      <h1>meetastu</h1>
     </div>
     <nav class="header-right" aria-label="Main">
-      <a href="#how" class="nav-link">How it works</a>
-      <a href="#rules" class="nav-link">Rules</a>
-      <a href="/login" id="header-cta" class="btn btn-secondary btn-sm">Sign in</a>
+      <a href="/rules" class="nav-link">Rules</a>
     </nav>
   </header>
 
   <main class="landing">
-    <section class="hero">
-      <div class="hero-copy">
-        <p id="online-now" class="eyebrow" hidden>
-          <span class="online-dot" aria-hidden="true"></span>
-          <span id="online-now-text"></span>
-        </p>
-        <h2 class="hero-title">Meet someone new at ASTU.</h2>
-        <p class="hero-body">
-          Random one-on-one video chats with other ASTU students. Sign in with
-          your school email, press Start, and say hi.
-        </p>
-        <div class="hero-actions">
-          <a href="/login" id="hero-cta" class="btn btn-primary btn-lg">Sign in with school email</a>
-          <a href="#how" class="btn btn-ghost btn-lg">How it works</a>
-        </div>
-        <p class="hero-note">Only @astust.edu.et addresses can get in.</p>
-      </div>
-
-      <!-- A still of the app mid-search: decorative, so hidden from AT. -->
-      <div class="hero-visual" aria-hidden="true">
-        <div class="mock-phone">
-          <div class="mock-static"></div>
-          <p class="mock-copy">Looking for someone…</p>
-          <div class="mock-self"></div>
-          <div class="mock-chips">
-            <span class="mock-chip"><span class="online-dot"></span>live</span>
-          </div>
-          <div class="mock-controls">
-            <span class="mock-btn mock-btn-primary">Next</span>
-            <span class="mock-btn">Stop</span>
-          </div>
-        </div>
+    <!-- The hero is the app's own empty screen: static, waiting for someone. -->
+    <section class="screen" aria-labelledby="hero-title">
+      <div class="screen-static" aria-hidden="true"></div>
+      <p id="online-now" class="screen-chip" hidden>
+        <span class="online-dot" aria-hidden="true"></span>
+        <span id="online-now-text"></span>
+      </p>
+      <div class="screen-copy">
+        <h2 id="hero-title" class="hero-title">Bored? Talk to someone.</h2>
+        <p id="hero-body" class="hero-body">Random video chats with other ASTU students.</p>
+        <a href="/login" id="cta" class="btn btn-primary btn-lg">Open meetastu</a>
       </div>
     </section>
 
-    <section id="how" class="section">
-      <h2 class="section-title">How it works</h2>
-      <ol class="steps">
-        <li class="step">
-          <span class="step-num" aria-hidden="true">1</span>
-          <h3>Sign in with your school email</h3>
-          <p>We send a sign-in link to your @astust.edu.et inbox. No password, and only students get in.</p>
-        </li>
-        <li class="step">
-          <span class="step-num" aria-hidden="true">2</span>
-          <h3>Press Start</h3>
-          <p>You're matched at random with another student who's looking right now.</p>
-        </li>
-        <li class="step">
-          <span class="step-num" aria-hidden="true">3</span>
-          <h3>Say hi, or press Next</h3>
-          <p>Talk on video or in the chat. Press Next any time to meet someone else. Nobody sees your email.</p>
-        </li>
-      </ol>
-    </section>
-
-    <section id="rules" class="section">
-      <h2 class="section-title">Community rules</h2>
-      <p class="section-body">Everyone here is a fellow student. Keep it that way.</p>
-      <ul class="rules">
-        <li><strong>Be kind.</strong> No harassment, hate, threats, or bullying.</li>
-        <li><strong>Keep it clothed.</strong> No nudity or sexual content, ever.</li>
-        <li><strong>No recording.</strong> Don't record or screenshot anyone without their consent.</li>
-        <li><strong>Keep personal info private.</strong> Don't share anyone else's details, and think twice before sharing your own.</li>
-        <li><strong>Your account is yours.</strong> Don't let anyone outside ASTU use it.</li>
-        <li><strong>Uncomfortable? Press Next.</strong> You never owe anyone a conversation.</li>
-      </ul>
-    </section>
-
-    <section class="section cta-band">
-      <h2 class="section-title">Someone's probably looking right now.</h2>
-      <a href="/login" id="footer-cta" class="btn btn-primary btn-lg">Sign in with school email</a>
-    </section>
+    <ol class="steps" aria-label="How it works">
+      <li><span class="step-num" aria-hidden="true">1</span><span><strong>Sign in</strong> with your @astust.edu.et email</span></li>
+      <li><span class="step-num" aria-hidden="true">2</span><span><strong>Press Start</strong> to meet a random student</span></li>
+      <li><span class="step-num" aria-hidden="true">3</span><span><strong>Press Next</strong> whenever you want someone new</span></li>
+    </ol>
   </main>
 
   <footer class="site-footer">
-    <p>meetastu is an independent student project and isn't affiliated with ASTU.</p>
+    <p>Independent student project, not affiliated with ASTU.</p>
+    <a href="/rules" class="nav-link">Community rules</a>
   </footer>
 
   <script src="landing.js"></script>

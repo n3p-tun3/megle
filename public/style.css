@@ -1294,21 +1294,6 @@ main.centered {
 
 /* ---------- landing ---------- */
 
-/* Pages that scroll like a document, unlike the app's fixed single screen. */
-body.page {
-  height: auto;
-  min-height: 100dvh;
-  overflow: visible;
-}
-
-/* Header content follows the page column rather than the window edges. */
-body.page header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  padding: 0 max(24px, calc((100% - 1040px) / 2 + 24px));
-}
-
 .brand-link {
   color: inherit;
   text-decoration: none;
@@ -1340,253 +1325,246 @@ a.btn {
   text-decoration: none;
 }
 
-.btn-sm {
-  height: 30px;
-  padding: 0 12px;
-  font-size: 0.8rem;
-}
-
 .btn-lg {
-  height: 44px;
-  padding: 0 20px;
+  height: 46px;
+  padding: 0 24px;
   font-size: 0.95rem;
 }
 
-.landing {
+/* One screen, no scrolling: the body is already a fixed-height column, and
+   the hero screen takes whatever the header, steps and footer leave. */
+body.onepager header,
+body.page header {
+  padding: 0 max(16px, calc((100% - 1080px) / 2 + 16px));
+}
+
+main.landing {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  max-width: 1040px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 0 24px;
-  display: block;
-}
-
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 48px;
-  padding: 72px 0 88px;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
-  padding: 5px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.hero-title {
-  margin: 0;
-  font-size: clamp(2.2rem, 5vw, 3.4rem);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: 700;
-  text-wrap: balance;
-}
-
-.hero-body {
-  margin: 20px 0 0;
-  max-width: 34em;
-  color: var(--text-muted);
-  font-size: 1.05rem;
-  line-height: 1.6;
-}
-
-.hero-actions {
+  padding: 16px 16px 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 32px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
 }
 
-.hero-note {
-  margin: 14px 0 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
-
-/* The app mid-search, built from the same parts: static, a self-view card,
-   frosted controls. */
-.hero-visual {
+/* The app's empty stranger tile, at full size: black, faint static, and
+   the pitch where "Looking for someone…" would be. Dark in both themes,
+   like the video stage. */
+.screen {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
   display: grid;
   place-items: center;
-}
-
-.mock-phone {
-  position: relative;
-  width: min(100%, 280px);
-  aspect-ratio: 9 / 18;
-  border-radius: 28px;
-  border: 6px solid var(--surface);
-  outline: 1px solid var(--border);
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
   background: #000;
   box-shadow: var(--shadow-panel);
-  overflow: hidden;
 }
 
-.mock-static {
+.screen-static {
   position: absolute;
   inset: -128px;
   background-image: var(--static);
   background-size: 128px 128px;
   image-rendering: pixelated;
-  opacity: 0.16;
+  opacity: 0.18;
   animation: static-shift 0.9s steps(1, end) infinite;
 }
 
-.mock-copy {
+.screen-chip {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
+  top: 14px;
+  left: 14px;
   margin: 0;
-  color: var(--on-video-muted);
-  font-size: 0.85rem;
-}
-
-.mock-self {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 30%;
-  aspect-ratio: 3 / 4;
-  border-radius: var(--radius);
-  border: 1px solid rgb(255 255 255 / 0.14);
-  background: #2a2c27;
-}
-
-.mock-chips {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-}
-
-.mock-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 7px;
+  padding: 5px 10px;
   border-radius: var(--radius);
   background: rgb(11 11 10 / 0.8);
-  color: #ecede7;
-  font-size: 0.7rem;
+  color: var(--on-video);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.mock-controls {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.screen-copy {
+  position: relative;
+  padding: 32px 24px;
+  text-align: center;
   display: flex;
-  gap: 6px;
-  padding: 12px;
-  background: var(--material-bar);
-  border-top: 1px solid var(--material-edge);
+  flex-direction: column;
+  align-items: center;
 }
 
-.mock-btn {
-  flex: 1;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius);
-  border: 1px solid var(--dk-muted);
-  color: var(--dk-text);
-  font-size: 0.8rem;
-}
-
-:root[data-theme='light'] .mock-btn {
-  border-color: var(--border-control);
-  color: var(--text);
-}
-
-.mock-btn-primary {
-  border-color: transparent !important;
-  background: var(--accent);
-  color: var(--on-accent) !important;
-}
-
-.section {
-  padding: 56px 0;
-  border-top: 1px solid var(--border);
-}
-
-.section-title {
+.hero-title {
   margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  font-weight: 650;
+  max-width: 14em;
+  color: var(--on-video);
+  font-size: clamp(2.3rem, 6.5vw, 4.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  text-wrap: balance;
 }
 
-.section-body {
-  margin: 10px 0 0;
-  color: var(--text-muted);
-  line-height: 1.6;
+.hero-body {
+  margin: 16px 0 30px;
+  max-width: 30em;
+  color: var(--on-video-muted);
+  font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+/* On the screen the CTA always uses the dark-theme lime, since the screen
+   is dark whatever the page theme. */
+.screen .btn-primary {
+  background: var(--dk-accent);
+  color: var(--dk-on-accent);
+}
+
+.screen .btn-primary:hover {
+  background: var(--dk-accent-hover);
+}
+
+.screen .btn-primary:focus-visible {
+  outline-color: var(--dk-accent-text);
 }
 
 .steps {
+  flex: none;
   list-style: none;
-  margin: 28px 0 0;
+  margin: 0;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
-.step {
-  padding: 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-panel);
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.steps strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .step-num {
+  flex: none;
   display: inline-grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 600;
 }
 
-.step h3 {
-  margin: 14px 0 6px;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.step p {
-  margin: 0;
+.site-footer {
+  flex: none;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   color: var(--text-muted);
-  font-size: 0.9rem;
-  line-height: 1.55;
+  font-size: 0.75rem;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer .nav-link {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 700px) {
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .hero-body {
+    margin-bottom: 24px;
+  }
+}
+
+/* Short windows (landscape phones): the steps give their room to the screen. */
+@media (max-height: 560px) {
+  .steps {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-static {
+    animation: none;
+  }
+}
+
+/* ---------- rules (a document page that scrolls) ---------- */
+
+body.page {
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+body.page header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+main.doc {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 16px 64px;
+}
+
+.doc-title {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.doc-lede {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
 }
 
 .rules {
-  margin: 24px 0 0;
+  margin: 28px 0 32px;
   padding: 0;
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 32px;
 }
 
 .rules li {
-  padding: 14px 0;
+  padding: 16px 0;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.92rem;
   line-height: 1.55;
 }
 
@@ -1595,68 +1573,4 @@ a.btn {
   margin-bottom: 2px;
   color: var(--text);
   font-weight: 600;
-}
-
-.cta-band {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.site-footer {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 24px;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
-
-.site-footer p {
-  margin: 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-/* Anchor jumps land below the sticky header instead of under it. */
-.section {
-  scroll-margin-top: 64px;
-}
-
-@media (max-width: 760px) {
-  .hero {
-    grid-template-columns: 1fr;
-    gap: 40px;
-    padding: 40px 0 56px;
-  }
-
-  .hero-visual .mock-phone {
-    width: min(100%, 240px);
-  }
-
-  .steps,
-  .rules {
-    grid-template-columns: 1fr;
-  }
-
-  .nav-link {
-    display: none;
-  }
-
-  .hero-actions .btn {
-    flex: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mock-static {
-    animation: none;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  html:has(body.page) {
-    scroll-behavior: smooth;
-  }
 }

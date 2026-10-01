@@ -1,4 +1,4 @@
-// TV static for the hero mockup, drawn once like the app's searching state.
+// TV static for the hero screen, drawn once like the app's searching state.
 (() => {
   const size = 128;
   const canvas = document.createElement('canvas');
@@ -27,15 +27,32 @@ fetch('/api/online')
   })
   .catch(() => {});
 
-// Signed-in visitors (who reach this page via /about) go straight to the app.
+// Signed-in visitors (who reach this page via /about) skip the sign-in step.
 fetch('/api/me')
-  .then((res) => (res.ok ? res.json() : null))
-  .then((me) => {
-    if (!me) return;
-    for (const id of ['header-cta', 'hero-cta', 'footer-cta']) {
-      const link = document.getElementById(id);
-      link.href = '/';
-      link.textContent = id === 'header-cta' ? 'Open app' : 'Open meetastu';
-    }
+  .then((res) => {
+    if (res.ok) document.getElementById('cta').href = '/';
   })
   .catch(() => {});
+
+// TEMPORARY: headline candidates to compare. Delete once one is chosen.
+(() => {
+  const HEADLINES = [
+    ['Bored? Talk to someone.', 'Random video chats with other ASTU students.'],
+    ["Someone on campus is bored too.", 'Press Start and find them. Random video chats, ASTU students only.'],
+    ['Say hi to a stranger.', "They're from ASTU. Random video chats, one tap away."],
+    ['Your next conversation is on campus.', 'Random one-on-one video chats with ASTU students.'],
+    ['Meet ASTU, one stranger at a time.', 'Random video chats. Press Next whenever you like.'],
+    ['Skip scrolling. Talk to someone.', 'Random video chats with other ASTU students.'],
+  ];
+  const title = document.getElementById('hero-title');
+  const body = document.getElementById('hero-body');
+  const pick = document.createElement('select');
+  HEADLINES.forEach(([h], i) => pick.add(new Option(`${i + 1}. ${h}`, i)));
+  pick.style.cssText =
+    'position:fixed;z-index:100;left:50%;bottom:12px;transform:translateX(-50%);max-width:92vw;' +
+    'font:12px system-ui;padding:6px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border-strong)';
+  pick.addEventListener('change', () => {
+    [title.textContent, body.textContent] = HEADLINES[pick.value];
+  });
+  document.body.append(pick);
+})();

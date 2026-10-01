@@ -187,9 +187,13 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(res, '/login.html');
   }
 
-  // The landing page, reachable when signed in too (the rules live there).
+  // The landing page, also reachable when signed in.
   if (pathname === '/about') {
     return serveStatic(res, '/landing.html');
+  }
+
+  if (pathname === '/rules') {
+    return serveStatic(res, '/rules.html');
   }
 
   // Public on purpose: the landing page shows it as social proof. It's a
