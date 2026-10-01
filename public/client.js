@@ -718,6 +718,18 @@ function setupPeer(initiator) {
     remoteVideo.classList.add('active');
   };
 
+  // Tell the server how this call connected, directly or through the TURN
+  // relay, for the admin board's relay usage. Nothing about the call's
+  // content or the other person is sent.
+  const thisPc = pc;
+  thisPc.onconnectionstatechange = async () => {
+    if (thisPc.connectionState === 'failed') {
+      sendToServer({ type: 'conn', result: 'failed' });
+    } else if (thisPc.connectionState === 'connected') {
+      sendToServer({ type: 'conn', result: (await usesRelay(thisPc)) ? 'relay' : 'direct' });
+    }
+  };
+
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       sendSignal({ candidate: event.candidate });
@@ -730,6 +742,27 @@ function setupPeer(initiator) {
       await pc.setLocalDescription(offer);
       sendSignal({ description: pc.localDescription });
     };
+  }
+}
+
+async function usesRelay(peer) {
+  try {
+    const stats = await peer.getStats();
+    let pair = null;
+    stats.forEach((report) => {
+      if (report.type === 'transport' && report.selectedCandidatePairId) {
+        pair = stats.get(report.selectedCandidatePairId);
+      }
+    });
+    // Firefox has no transport report; fall back to the nominated pair.
+    if (!pair) {
+      stats.forEach((report) => {
+        if (report.type === 'candidate-pair' && report.nominated && report.state === 'succeeded') pair = report;
+      });
+    }
+    return stats.get(pair?.localCandidateId)?.candidateType === 'relay';
+  } catch {
+    return false;
   }
 }
 

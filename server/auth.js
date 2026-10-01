@@ -184,6 +184,19 @@ function testAccountEmail(seat) {
   return `test-${clean}@${domain}`;
 }
 
+// Who can open the admin board. Same sign-in as everyone else; the email
+// just has to be on this list.
+function adminEmails() {
+  return (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isAdmin(email) {
+  return Boolean(email) && adminEmails().includes(String(email).toLowerCase());
+}
+
 function warnOnInsecureConfig() {
   if (!process.env.SESSION_SECRET) {
     console.warn('[auth] SESSION_SECRET is unset. Using an insecure default (dev only).');
@@ -192,6 +205,9 @@ function warnOnInsecureConfig() {
     console.warn('[auth] ALLOWED_EMAIL_DOMAINS contains "*". Any email domain can sign in.');
   } else {
     console.log(`[auth] Sign-in restricted to: ${allowedDomains().join(', ')}`);
+  }
+  if (adminEmails().length) {
+    console.log(`[auth] Admin board open to: ${adminEmails().join(', ')}`);
   }
   if (testLoginEnabled()) {
     console.warn('[auth] TEST_LOGIN_CODE is set. /auth/test-login can mint sessions.');
@@ -221,5 +237,6 @@ module.exports = {
   testLoginEnabled,
   checkTestLoginCode,
   testAccountEmail,
+  isAdmin,
   warnOnInsecureConfig,
 };

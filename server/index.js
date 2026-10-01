@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 const auth = require('./auth');
+const db = require('./db');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -224,7 +225,27 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/me') {
-    return sendJson(res, 200, { email: session.email });
+    return sendJson(res, 200, { email: session.email, admin: auth.isAdmin(session.email) });
+  }
+
+  // Admin board: pages and data. Anyone else gets a plain 404, so the board
+  // isn't even confirmed to exist.
+  if (pathname === '/admin' || pathname.startsWith('/admin') || pathname.startsWith('/api/admin/')) {
+    if (!auth.isAdmin(session.email)) {
+      res.writeHead(404);
+      return res.end('Not found');
+    }
+    if (pathname === '/admin') return serveStatic(res, '/admin.html');
+    if (pathname === '/api/admin/live') return sendJson(res, 200, liveSnapshot());
+    if (pathname === '/api/admin/stats') {
+      const days = Math.min(365, Math.max(1, parseInt(url.searchParams.get('days'), 10) || 30));
+      try {
+        return sendJson(res, 200, { enabled: db.enabled(), stats: await db.stats(days) });
+      } catch (err) {
+        console.error('[admin] Stats query failed:', err.message);
+        return sendJson(res, 500, { error: 'Stats query failed' });
+      }
+    }
   }
 
   // Gated so the TURN credentials are only reachable by signed-in students,
@@ -266,6 +287,7 @@ function tryMatch(ws) {
 
   const partnerIdx = waiting.findIndex((peer) => peer.readyState === peer.OPEN);
   if (partnerIdx === -1) {
+    ws.waitingSince = Date.now();
     waiting.push(ws);
     send(ws, { type: 'status', status: 'searching' });
     return;
@@ -275,21 +297,92 @@ function tryMatch(ws) {
   partners.set(ws, partner);
   partners.set(partner, ws);
 
+  const now = Date.now();
+  ws.pairedAt = partner.pairedAt = now;
+  ws.connResult = partner.connResult = null;
+  // Only the initiator's connection report is logged, so each call counts once.
+  partner.isInitiator = true;
+  ws.isInitiator = false;
+  // Records that a call started and how long the waiting side waited, but
+  // not who was in it.
+  db.logEvent('match', null, { wait_ms: now - (partner.waitingSince || now) });
+
   // The partner who was already waiting initiates the WebRTC offer.
   send(partner, { type: 'matched', initiator: true });
   send(ws, { type: 'matched', initiator: false });
 }
 
-function unpair(ws, { requeueSelf }) {
+function unpair(ws, { requeueSelf, reason }) {
   const partner = partners.get(ws);
   if (partner) {
     partners.delete(ws);
     partners.delete(partner);
+    db.logEvent('call_end', null, { duration_ms: Date.now() - ws.pairedAt, ended: reason });
     send(partner, { type: 'partner-left' });
     tryMatch(partner);
   }
   removeFromWaiting(ws);
   if (requeueSelf) tryMatch(ws);
+}
+
+function deviceKind(userAgent = '') {
+  if (/iPad|Tablet/i.test(userAgent)) return 'tablet';
+  if (/Mobi|Android|iPhone/i.test(userAgent)) return 'mobile';
+  return 'desktop';
+}
+
+const STARTED_AT = Date.now();
+
+// Everything the admin board's live tab shows. Calls are counts only: the
+// board says a call is happening, never who it's between.
+function liveSnapshot() {
+  const now = Date.now();
+  const STATE_RANK = { idle: 0, searching: 1, 'in call': 2 };
+  const people = new Map();
+
+  for (const ws of online) {
+    const state = partners.has(ws) ? 'in call' : waiting.includes(ws) ? 'searching' : 'idle';
+    const prev = people.get(ws.email);
+    // One row per person even with several tabs open: earliest connection,
+    // busiest state.
+    if (!prev) {
+      people.set(ws.email, { email: ws.email, since: ws.connectedAt, state, device: ws.device, tabs: 1 });
+    } else {
+      prev.tabs += 1;
+      prev.since = Math.min(prev.since, ws.connectedAt);
+      if (STATE_RANK[state] > STATE_RANK[prev.state]) prev.state = state;
+    }
+  }
+
+  const calls = { total: 0, direct: 0, relay: 0, connecting: 0 };
+  for (const [ws, partner] of partners) {
+    if (!ws.isInitiator) continue;
+    calls.total += 1;
+    const result = ws.connResult || partner.connResult;
+    if (result === 'direct' || result === 'relay') calls[result] += 1;
+    else calls.connecting += 1;
+  }
+
+  const waits = waiting.map((ws) => now - (ws.waitingSince || now));
+  const memory = process.memoryUsage();
+
+  return {
+    at: now,
+    sockets: online.size,
+    people: people.size,
+    waiting: waiting.length,
+    longestWaitS: waits.length ? Math.round(Math.max(...waits) / 1000) : 0,
+    calls,
+    users: [...people.values()].sort((a, b) => STATE_RANK[b.state] - STATE_RANK[a.state] || a.since - b.since),
+    health: {
+      uptimeS: Math.round((now - STARTED_AT) / 1000),
+      rssMb: Math.round(memory.rss / 1048576),
+      heapMb: Math.round(memory.heapUsed / 1048576),
+      node: process.version,
+      commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null,
+      database: db.enabled(),
+    },
+  };
 }
 
 wss.on('connection', (ws, req) => {
@@ -299,8 +392,12 @@ wss.on('connection', (ws, req) => {
     return ws.close(4001, 'Not signed in');
   }
   ws.email = session.email;
+  ws.connectedAt = Date.now();
+  ws.device = deviceKind(req.headers['user-agent']);
   online.add(ws);
   broadcastOnline();
+  db.touchUser(ws.email);
+  db.logEvent('connect', ws.email, { device: ws.device });
 
   ws.on('message', (raw) => {
     let msg;
@@ -335,14 +432,26 @@ wss.on('connection', (ws, req) => {
       }
 
       case 'next':
-        unpair(ws, { requeueSelf: true });
+        unpair(ws, { requeueSelf: true, reason: 'next' });
         break;
 
       // Leave the queue or the current pair but stay connected, so the
       // presence count still includes people idling on the page.
       case 'leave':
-        unpair(ws, { requeueSelf: false });
+        unpair(ws, { requeueSelf: false, reason: 'leave' });
         break;
+
+      // How this call's WebRTC connection came up, reported by the client:
+      // directly, through the TURN relay, or not at all.
+      case 'conn': {
+        const result = ['direct', 'relay', 'failed'].includes(msg.result) ? msg.result : null;
+        const partner = partners.get(ws);
+        if (!result || !partner || ws.connResult) break;
+        ws.connResult = result;
+        if (!partner.connResult) partner.connResult = result;
+        if (ws.isInitiator) db.logEvent('conn', null, { result });
+        break;
+      }
 
       default:
         break;
@@ -350,11 +459,13 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
-    unpair(ws, { requeueSelf: false });
+    unpair(ws, { requeueSelf: false, reason: 'disconnect' });
     online.delete(ws);
     broadcastOnline();
   });
 });
+
+db.init();
 
 server.listen(PORT, () => {
   auth.warnOnInsecureConfig();

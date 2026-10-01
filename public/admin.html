@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · meetastu</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="theme.js"></script>
+</head>
+<body class="page admin">
+  <header>
+    <div class="brand">
+      <a href="/" class="brand-link"><h1>meetastu</h1></a>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <nav class="header-right" aria-label="Main">
+      <a href="/" class="nav-link">Open app</a>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <div class="admin-toolbar">
+      <div class="tabs" role="tablist" aria-label="Admin sections">
+        <button type="button" role="tab" id="tab-live" aria-controls="panel-live" aria-selected="true">Live</button>
+        <button type="button" role="tab" id="tab-analytics" aria-controls="panel-analytics" aria-selected="false" tabindex="-1">Analytics</button>
+      </div>
+      <p id="live-updated" class="admin-meta" aria-live="off"></p>
+      <label class="admin-range" id="range-wrap" hidden>
+        <span>Range</span>
+        <select id="range">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- ---------- Live ---------- -->
+    <section id="panel-live" role="tabpanel" aria-labelledby="tab-live" class="admin-panel">
+      <div class="cards">
+        <div class="card"><p class="card-label">Online now</p><p class="card-value" id="live-people">–</p><p class="card-sub" id="live-sockets"></p></div>
+        <div class="card"><p class="card-label">Searching</p><p class="card-value" id="live-waiting">–</p><p class="card-sub" id="live-wait"></p></div>
+        <div class="card"><p class="card-label">Calls in progress</p><p class="card-value" id="live-calls">–</p><p class="card-sub" id="live-calls-sub"></p></div>
+        <div class="card"><p class="card-label">Server</p><p class="card-value" id="live-uptime">–</p><p class="card-sub" id="live-health"></p></div>
+      </div>
+
+      <div class="admin-block">
+        <h2 class="block-title">Who's online</h2>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th scope="col">Email</th><th scope="col">State</th><th scope="col">Device</th><th scope="col">Online for</th></tr>
+            </thead>
+            <tbody id="live-users"></tbody>
+          </table>
+        </div>
+        <p id="live-empty" class="admin-empty" hidden>Nobody's online right now.</p>
+      </div>
+    </section>
+
+    <!-- ---------- Analytics ---------- -->
+    <section id="panel-analytics" role="tabpanel" aria-labelledby="tab-analytics" class="admin-panel" hidden>
+      <div id="analytics-off" class="admin-notice" hidden>
+        <strong>Analytics need a database.</strong>
+        Set <code>DATABASE_URL</code> to a Postgres connection string and restart; history starts recording from then.
+      </div>
+
+      <div id="analytics-body" hidden>
+        <div class="cards">
+          <div class="card"><p class="card-label">Students</p><p class="card-value" id="t-users">–</p><p class="card-sub">signed in ever</p></div>
+          <div class="card"><p class="card-label">Weekly active</p><p class="card-value" id="t-wau">–</p><p class="card-sub">last 7 days</p></div>
+          <div class="card"><p class="card-label">Calls</p><p class="card-value" id="t-calls">–</p><p class="card-sub" id="t-minutes"></p></div>
+          <div class="card"><p class="card-label">Average call</p><p class="card-value" id="t-avg">–</p><p class="card-sub" id="t-skip"></p></div>
+        </div>
+
+        <div class="chart-grid">
+          <figure class="admin-block chart" id="c-active"><figcaption class="block-title">Daily active students</figcaption></figure>
+          <figure class="admin-block chart" id="c-calls"><figcaption class="block-title">Calls per day</figcaption></figure>
+          <figure class="admin-block chart" id="c-new"><figcaption class="block-title">New students per day</figcaption></figure>
+          <figure class="admin-block chart" id="c-length"><figcaption class="block-title">Average call length</figcaption></figure>
+        </div>
+
+        <figure class="admin-block" id="c-heatmap">
+          <figcaption class="block-title">Busiest hours <span class="block-note">calls started, campus time</span></figcaption>
+        </figure>
+
+        <div class="chart-grid">
+          <figure class="admin-block" id="c-devices"><figcaption class="block-title">Devices <span class="block-note">visits</span></figcaption></figure>
+          <figure class="admin-block" id="c-conn"><figcaption class="block-title">How calls connect <span class="block-note">relay uses your TURN quota</span></figcaption></figure>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="admin.js"></script>
+</body>
+</html>

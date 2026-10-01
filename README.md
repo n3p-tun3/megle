@@ -38,6 +38,8 @@ All settings are environment variables. See `.env.example` for the full list.
 | `RESEND_API_KEY`, `MAIL_FROM` | Real email delivery. Without both, links go to the server log. |
 | `TEST_LOGIN_CODE` | Optional. Enables a demo login that skips email. |
 | `TURN_URL`, `TURN_USERNAME`, `TURN_PASSWORD` | TURN relay credentials, served only to signed-in users. |
+| `ADMIN_EMAILS` | Comma-separated emails that can open the admin board at `/admin`. |
+| `DATABASE_URL` | Optional Postgres connection string. Enables the board's analytics. |
 
 ### Email delivery
 
@@ -58,6 +60,23 @@ Set `TEST_LOGIN_CODE` to any secret string, then visit:
 Different `as` values produce different identities, so you can open two browser
 profiles and match against yourself. The endpoint returns 404 when
 `TEST_LOGIN_CODE` is unset, so it is off by default.
+
+### Admin board
+
+`/admin` has two tabs:
+
+- **Live**: who's online and in what state, people searching and the
+  longest wait, calls in progress (counts only, never who's with whom), and
+  server health.
+- **Analytics**: daily active students, calls per day, new students, call
+  length, quick skips, busiest hours, devices, and how calls connect
+  (direct or through the TURN relay). Needs `DATABASE_URL`.
+
+Analytics store sign-in presence and call metadata (start, wait, length,
+how it ended, how it connected). They never store chat text, video, or
+who was paired with whom. Any Postgres works; the schema is created on
+start. For local development, `npm run db:local` runs a throwaway Postgres
+on port 5433.
 
 ## Deploying (free tiers, no credit card)
 

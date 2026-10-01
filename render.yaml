@@ -3,5 +3,6 @@ services:
     name: megle
     env: node
     plan: free
-    buildCommand: npm install
+    # --omit=dev skips the embedded Postgres used only for local testing.
+    buildCommand: npm install --omit=dev
     startCommand: npm start

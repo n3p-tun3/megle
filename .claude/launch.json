@@ -4,11 +4,16 @@
     {
       "name": "megle-server",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start"],
+      "runtimeArgs": [
+        "run",
+        "start"
+      ],
       "port": 3000,
       "env": {
         "TEST_LOGIN_CODE": "localdev",
-        "SESSION_SECRET": "local-dev-secret"
+        "SESSION_SECRET": "local-dev-secret",
+        "DATABASE_URL": "postgres://postgres:postgres@localhost:5433/meetastu",
+        "ADMIN_EMAILS": "test-a@astust.edu.et"
       }
     }
   ]
