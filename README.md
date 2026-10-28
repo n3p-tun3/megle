@@ -1,12 +1,14 @@
 # megle
 
-Omegle-style random video chat, restricted to one campus. Two signed-in
+Omegle-style random video chat, made for one campus. Two signed-in
 students get matched into a 1:1 video call with text chat, and can skip to the
 next person at any time.
 
 - `server/index.js` — plain Node.js server. Serves the frontend, handles auth,
-  and relays matchmaking + WebRTC signaling over WebSocket. No database.
-- `server/auth.js` — magic-link sign-in, session cookies, email delivery.
+  and relays matchmaking + WebRTC signaling over WebSocket.
+- `server/auth.js` — session cookies, test login, admin list.
+- `server/google.js` — verifies "Sign in with Google" ID tokens.
+- `server/db.js` — optional Postgres for the admin board's analytics.
 - `public/` — vanilla HTML/CSS/JS client.
 
 Video and audio never touch the server: those flow peer-to-peer over WebRTC.
@@ -20,9 +22,8 @@ npm install
 npm start
 ```
 
-Then open `http://localhost:3000`. With no mail provider configured, sign-in
-links are printed to the server log instead of emailed. Copy the link from the
-terminal and open it.
+Then open `http://localhost:3000`. Google sign-in needs `GOOGLE_CLIENT_ID`
+(see below); without it, use the test login.
 
 To match against yourself, sign in as two different identities in two browser
 profiles (see the test login below).
@@ -33,28 +34,42 @@ All settings are environment variables. See `.env.example` for the full list.
 
 | Variable | Purpose |
 | --- | --- |
-| `ALLOWED_EMAIL_DOMAINS` | Comma-separated sign-in allowlist. Defaults to `astust.edu.et`. Subdomains are accepted. Set `*` to allow anything (local dev only). |
+| `GOOGLE_CLIENT_ID` | OAuth client ID for "Sign in with Google". Without it, only the test login works. |
 | `SESSION_SECRET` | Signs session cookies. Set a long random value in production; changing it signs everyone out. |
-| `RESEND_API_KEY`, `MAIL_FROM` | Real email delivery. Without both, links go to the server log. |
-| `TEST_LOGIN_CODE` | Optional. Enables a demo login that skips email. |
+| `TEST_LOGIN_CODE` | Optional. Enables a demo login that skips Google. |
 | `TURN_URL`, `TURN_USERNAME`, `TURN_PASSWORD` | TURN relay credentials, served only to signed-in users. |
-| `ADMIN_EMAILS` | Comma-separated emails that can open the admin board at `/admin`. |
+| `ADMIN_EMAILS` | Comma-separated Google emails that can open the admin board at `/admin`. |
 | `DATABASE_URL` | Optional Postgres connection string. Enables the board's analytics. |
 
-### Email delivery
+### Google sign-in
 
-1. Create a free [Resend](https://resend.com) account (no card required).
-2. Verify a domain you control, or use their sandbox sender for testing.
-3. Set `RESEND_API_KEY` and `MAIL_FROM`. `MAIL_FROM` must be on a verified
-   domain, otherwise the API rejects the send and sign-in fails with a 502.
+Anyone with a Google account can sign in. There is no campus check: the
+school email turned out to be something students don't use, and location is
+too easy to fake to be worth the friction. The app is made for ASTU by how
+it's shared, and kept safe by accounts that can be moderated.
 
-### Test login (skip the email step)
+1. In [Google Cloud Console](https://console.cloud.google.com), create a
+   project, then **APIs & Services → OAuth consent screen**: External, app
+   name, support email. Only the basic `email` and `profile` scopes are used,
+   so no verification review is needed.
+2. **Credentials → Create credentials → OAuth client ID → Web application.**
+3. Under **Authorized JavaScript origins** add the deployed origin (for
+   example `https://megle.onrender.com`) and, for local work, both
+   `http://localhost` and `http://localhost:3000`. No redirect URIs are needed.
+4. Set `GOOGLE_CLIENT_ID` to the client ID. There is no client secret: the
+   server checks Google's signature on the ID token instead.
+
+Google blocks sign-in inside in-app browsers (Telegram, Instagram,
+Facebook). The login page detects the common ones and tells people to open
+it in Chrome or Safari.
+
+### Test login (skip Google)
 
 Set `TEST_LOGIN_CODE` to any secret string, then visit:
 
 ```
-/auth/test-login?code=YOUR_CODE        signs in as test-a@<domain>
-/auth/test-login?code=YOUR_CODE&as=b   signs in as test-b@<domain>
+/auth/test-login?code=YOUR_CODE        signs in as test-a@meetastu.test
+/auth/test-login?code=YOUR_CODE&as=b   signs in as test-b@meetastu.test
 ```
 
 Different `as` values produce different identities, so you can open two browser
@@ -98,11 +113,11 @@ public Open Relay demo servers, which are shared and unreliable.
 
 ## Known limitations
 
-- **Single instance only.** The matchmaking queue, presence count, and pending
-  magic-link tokens all live in memory. Running two instances would split the
+- **Single instance only.** The matchmaking queue and presence count live in
+  memory. Running two instances would split the
   pool. Sessions themselves are signed cookies, so they survive restarts.
 - **TURN credentials are long-lived.** Signed-in users can read them from
   `/turn-config.json`. Short-lived HMAC credentials would fix this but need
   either a paid ExpressTURN plan or self-hosted coturn.
-- **No moderation or rate limiting on chat.** Accounts trace back to school
-  emails, which helps, but there is no reporting or blocking yet.
+- **No moderation or rate limiting on chat.** Accounts are Google accounts,
+  which cost something to replace, but there is no reporting or banning yet.

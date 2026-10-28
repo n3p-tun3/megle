@@ -22,8 +22,8 @@ fetch('/api/me')
 (() => {
   const HEADLINES = [
     ['Bored? Talk to someone.', 'Random video chats with other ASTU students.'],
-    ['Someone on campus is bored too.', 'Press Start and find them. Random video chats, ASTU students only.'],
-    ['Say hi to a stranger.', "They're from ASTU. Random video chats, one tap away."],
+    ['Someone on campus is bored too.', 'Press Start and find them. Random video chats, made for ASTU.'],
+    ['Say hi to a stranger.', 'Random video chats around ASTU, one tap away.'],
     ['Skip scrolling. Talk to someone.', 'Random video chats with other ASTU students.'],
   ];
   const [title, body] = HEADLINES[Math.floor(Math.random() * HEADLINES.length)];

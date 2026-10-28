@@ -13,7 +13,7 @@
         "TEST_LOGIN_CODE": "localdev",
         "SESSION_SECRET": "local-dev-secret",
         "DATABASE_URL": "postgres://postgres:postgres@localhost:5433/meetastu",
-        "ADMIN_EMAILS": "test-a@astust.edu.et"
+        "ADMIN_EMAILS": "test-a@meetastu.test"
       }
     }
   ]

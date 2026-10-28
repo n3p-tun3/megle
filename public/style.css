@@ -1162,38 +1162,6 @@ video.active {
 
 /* ---------- login ---------- */
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.field-label {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.field-input {
-  height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius);
-  background: var(--fill-subtle);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.9rem;
-}
-
-.field-input::placeholder {
-  color: var(--text-placeholder);
-}
-
-.field-input:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 1px;
-  border-color: var(--accent);
-}
-
 .field-message {
   margin: 0;
   font-size: 0.8rem;
@@ -1209,18 +1177,7 @@ video.active {
   color: var(--text-muted);
 }
 
-.btn-block {
-  width: 100%;
-  margin-top: 4px;
-}
-
-.sent-state {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* The sign-in form, tuned in on the static screen as a theme-colored card. */
+/* The sign-in card, tuned in on the static screen. */
 .auth-card {
   position: relative;
   width: min(100% - 32px, 380px);
@@ -1239,10 +1196,6 @@ video.active {
   letter-spacing: -0.02em;
 }
 
-.auth-title:focus {
-  outline: none;
-}
-
 .auth-body {
   margin: 4px 0 14px;
   color: var(--text-muted);
@@ -1256,8 +1209,15 @@ video.active {
   overflow-wrap: anywhere;
 }
 
+.google-btn {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
 .auth-tip {
-  margin: 0 0 8px;
+  margin: 8px 0 0;
   padding: 10px 12px;
   border-radius: var(--radius);
   background: var(--fill-icon-hover);
@@ -1269,60 +1229,6 @@ video.active {
 .auth-tip strong {
   color: var(--text);
   font-weight: 600;
-}
-
-.sent-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.sent-icon .icon {
-  width: 20px;
-  height: 20px;
-}
-
-/* Input with the school domain shown after it: the frame is the field, so
-   focus rings the whole thing and clicking the suffix still types. */
-.field-affix {
-  display: flex;
-  align-items: center;
-  height: 44px;
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius);
-  background: var(--fill-subtle);
-  cursor: text;
-}
-
-.field-affix:focus-within {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 1px;
-}
-
-.field-affix .field-input {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  border: none;
-  background: transparent;
-  font-size: 1rem;
-}
-
-.field-affix .field-input:focus-visible {
-  outline: none;
-}
-
-.field-suffix {
-  flex: none;
-  padding-right: 12px;
-  color: var(--text-muted);
-  font-size: 1rem;
-  white-space: nowrap;
 }
 
 /* ---------- small screens ---------- */
@@ -1667,10 +1573,6 @@ main.doc {
 @media (max-height: 680px) {
   .auth-card {
     padding: 20px 18px 18px;
-  }
-
-  .sent-icon {
-    display: none;
   }
 
   .auth-tip {

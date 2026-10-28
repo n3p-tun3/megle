@@ -4,6 +4,7 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const auth = require('./auth');
 const db = require('./db');
+const google = require('./google');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -16,10 +17,6 @@ const MIME = {
 
 // Pages that never require a session. Everything else behind the auth gate.
 const PUBLIC_PATHS = new Set(['/login', '/login.html', '/login.js', '/style.css', '/theme.js', '/landing.js', '/screen-static.js']);
-
-// email -> timestamp of last magic link, to stop someone hammering the mail API.
-const lastLinkSentAt = new Map();
-const LINK_THROTTLE_MS = 1000 * 30;
 
 // Matches the maxlength on the chat input; enforced here too since a client
 // can send whatever it likes over the socket.
@@ -64,46 +61,37 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
-async function handleAuthRequest(req, res) {
-  let email;
+// The browser gets an ID token from Google's button and posts it here. A
+// verified Google email is the whole sign-in: no codes, no passwords.
+async function handleGoogleSignIn(req, res) {
+  // Requiring JSON forces a CORS preflight on cross-site posts, so another
+  // site can't silently sign a visitor into an account of its choosing.
+  if (!(req.headers['content-type'] || '').startsWith('application/json')) {
+    return sendJson(res, 415, { error: 'Expected JSON' });
+  }
+
+  let credential;
   try {
-    ({ email } = await readJsonBody(req));
+    ({ credential } = await readJsonBody(req));
   } catch (err) {
     return sendJson(res, 400, { error: err.message });
   }
 
-  email = String(email || '').trim().toLowerCase();
-
-  if (!auth.isAllowedEmail(email)) {
-    const domains = auth.allowedDomains();
-    return sendJson(res, 400, {
-      error: domains.length
-        ? `Use your school email address (${domains.join(' or ')}).`
-        : 'Enter a valid email address.',
-    });
-  }
-
-  const last = lastLinkSentAt.get(email) || 0;
-  if (Date.now() - last < LINK_THROTTLE_MS) {
-    return sendJson(res, 429, { error: 'A link was just sent. Check your inbox.' });
-  }
-  lastLinkSentAt.set(email, Date.now());
-
-  const token = auth.createLoginToken(email);
-  const link = `${originFor(req)}/auth/verify?token=${encodeURIComponent(token)}`;
-
+  let user;
   try {
-    const { delivered } = await auth.deliverLoginLink(email, link);
-    return sendJson(res, 200, { ok: true, delivered });
+    user = await google.verifyIdToken(credential);
   } catch (err) {
-    console.error('[auth] Failed to deliver login link:', err.message);
-    return sendJson(res, 502, { error: 'Could not send the email. Try again shortly.' });
+    console.warn('[auth] Rejected Google sign-in:', err.message);
+    return sendJson(res, 401, { error: 'Google sign-in failed. Try again.' });
   }
+
+  res.setHeader('Set-Cookie', sessionCookie(req, user.email));
+  return sendJson(res, 200, { ok: true });
 }
 
-function signInAndRedirect(req, res, email) {
+function sessionCookie(req, email) {
   const secure = (req.headers['x-forwarded-proto'] || '') === 'https';
-  const cookie = [
+  return [
     `${auth.SESSION_COOKIE}=${auth.createSession(email)}`,
     'Path=/',
     'HttpOnly',
@@ -113,18 +101,6 @@ function signInAndRedirect(req, res, email) {
   ]
     .filter(Boolean)
     .join('; ');
-
-  res.writeHead(302, { 'Set-Cookie': cookie, Location: '/' });
-  res.end();
-}
-
-function handleAuthVerify(req, res, url) {
-  const email = auth.consumeLoginToken(url.searchParams.get('token') || '');
-  if (!email) {
-    res.writeHead(302, { Location: '/login?error=expired' });
-    return res.end();
-  }
-  signInAndRedirect(req, res, email);
 }
 
 function handleTestLogin(req, res, url) {
@@ -136,7 +112,11 @@ function handleTestLogin(req, res, url) {
     res.writeHead(403);
     return res.end('Bad test login code');
   }
-  signInAndRedirect(req, res, auth.testAccountEmail(url.searchParams.get('as')));
+  res.writeHead(302, {
+    'Set-Cookie': sessionCookie(req, auth.testAccountEmail(url.searchParams.get('as'))),
+    Location: '/',
+  });
+  res.end();
 }
 
 function serveStatic(res, reqPath) {
@@ -166,12 +146,14 @@ const server = http.createServer(async (req, res) => {
     return res.end('ok');
   }
 
-  if (pathname === '/auth/request' && req.method === 'POST') {
-    return handleAuthRequest(req, res);
+  if (pathname === '/auth/google' && req.method === 'POST') {
+    return handleGoogleSignIn(req, res);
   }
 
-  if (pathname === '/auth/verify') {
-    return handleAuthVerify(req, res, url);
+  // The login page needs the client ID to draw Google's button. It is public
+  // by design: Google only accepts it from the origins registered for it.
+  if (pathname === '/auth/config') {
+    return sendJson(res, 200, { googleClientId: google.clientId() || null });
   }
 
   if (pathname === '/auth/test-login') {

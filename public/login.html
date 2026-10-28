@@ -23,59 +23,29 @@
       <div class="screen-static" aria-hidden="true"></div>
 
       <div class="auth-card">
-        <form id="login-form" class="form" novalidate>
-          <h2 class="auth-title">Sign in with your school email</h2>
-          <p class="auth-body">We'll email you a link that signs you in. No password.</p>
+        <h2 class="auth-title">Sign in to meetastu</h2>
+        <p class="auth-body">One tap with your Google account. No new password to remember.</p>
 
-          <label class="field-label" for="email">School email</label>
-          <div class="field-affix">
-            <input
-              id="email"
-              class="field-input"
-              type="text"
-              inputmode="email"
-              name="email"
-              autocomplete="email"
-              autocapitalize="none"
-              spellcheck="false"
-              placeholder="your.name"
-              aria-describedby="email-suffix form-message"
-              required
-            />
-            <span id="email-suffix" class="field-suffix">@astust.edu.et</span>
-          </div>
-          <p id="form-message" class="field-message" role="status" aria-live="polite"></p>
-          <button id="submit-btn" class="btn btn-primary btn-block btn-lg" type="submit">
-            Email me a link
-          </button>
-        </form>
+        <!-- Google draws its button in here; the min-height holds the space
+             so the card doesn't jump when it arrives. -->
+        <div id="google-btn" class="google-btn"></div>
+        <p id="form-message" class="field-message" role="status" aria-live="polite"></p>
 
-        <div id="sent-state" class="sent-state" hidden>
-          <span class="sent-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 256 256" fill="currentColor"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/></svg>
-          </span>
-          <h2 id="sent-title" class="auth-title" tabindex="-1">Check your inbox</h2>
-          <p class="auth-body">
-            We sent a sign-in link to <strong id="sent-email"></strong>.
-            It works once and expires in 15 minutes.
-          </p>
-          <p class="auth-tip">
-            On your phone? If the link opens inside your mail app, choose
-            <strong>Open in browser</strong> so you stay signed in there.
-          </p>
-          <p id="sent-message" class="field-message" role="status" aria-live="polite"></p>
-          <button id="resend-btn" class="btn btn-secondary btn-block" type="button">Resend link</button>
-          <button id="retry-btn" class="btn btn-ghost btn-block" type="button">Use a different email</button>
-        </div>
+        <p id="in-app-tip" class="auth-tip" hidden>
+          Google sign-in doesn't work inside app browsers like Telegram's or
+          Instagram's. Open this page in <strong>Chrome</strong> or
+          <strong>Safari</strong> instead.
+        </p>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <p>Only @astust.edu.et addresses can sign in.</p>
+    <p>Your email is never shown to the people you meet.</p>
     <a href="/rules" class="nav-link">Community rules</a>
   </footer>
 
+  <script src="https://accounts.google.com/gsi/client" async id="gsi-script"></script>
   <script src="login.js"></script>
   <script src="screen-static.js"></script>
 </body>
