@@ -11,6 +11,7 @@
       "port": 3000,
       "env": {
         "TEST_LOGIN_CODE": "localdev",
+        "GOOGLE_CLIENT_ID": "40022681089-o22eu2tctvbd63s27uthekgr9r4vfdqi.apps.googleusercontent.com",
         "SESSION_SECRET": "local-dev-secret",
         "DATABASE_URL": "postgres://postgres:postgres@localhost:5433/meetastu",
         "ADMIN_EMAILS": "test-a@meetastu.test"

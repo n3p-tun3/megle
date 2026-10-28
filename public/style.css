@@ -1216,6 +1216,14 @@ video.active {
   margin-bottom: 8px;
 }
 
+/* Google's button is a light-scheme iframe. Under our dark color-scheme the
+   browser paints an opaque white backdrop behind a mismatched iframe, which
+   shows around the pill once it personalizes ("Continue as …"). Matching
+   schemes keeps it transparent. */
+.google-btn iframe {
+  color-scheme: light;
+}
+
 .auth-tip {
   margin: 8px 0 0;
   padding: 10px 12px;
